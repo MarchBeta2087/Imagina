@@ -14,35 +14,12 @@ inline DExpVec4 operator+(DExpVec4 x, const DExpVec4 &y) noexcept;
 inline DExpVec4 operator-(DExpVec4 x, const DExpVec4 &y) noexcept;
 
 struct DExpVec4 {
-	union {
-		struct {
-			dvec4 Mantissa;
-			i64vec4 Exponent;
-		};
-		struct {
-			dvec4 Mantissa;
-			i64vec4 Exponent;
+	// MSVC allowed several anonymous structs over the same two members here;
+	// standard C++ forbids non-trivial members in an anonymous aggregate, so the
+	// aliases are spelled as the comparisons below instead.
+	dvec4 Mantissa;
+	i64vec4 Exponent;
 
-		} AssumePositive;
-		struct {
-			dvec4 Mantissa;
-			i64vec4 Exponent;
-
-			__m256d operator==(const DExpVec4 &x) {
-				return (Mantissa == x.Mantissa) && (Exponent == x.Exponent);
-			}
-		} AssumeNormalized;
-		struct {
-			dvec4 Mantissa;
-			i64vec4 Exponent;
-
-			mask64x4 operator> (const DExpVec4 &x) const { return (Exponent > x.Exponent) || ((Exponent == x.Exponent) && (Mantissa >  x.Mantissa)); }
-			mask64x4 operator>=(const DExpVec4 &x) const { return (Exponent > x.Exponent) || ((Exponent == x.Exponent) && (Mantissa >= x.Mantissa)); }
-			mask64x4 operator< (const DExpVec4 &x) const { return (Exponent < x.Exponent) || ((Exponent == x.Exponent) && (Mantissa <  x.Mantissa)); }
-			mask64x4 operator<=(const DExpVec4 &x) const { return (Exponent < x.Exponent) || ((Exponent == x.Exponent) && (Mantissa <= x.Mantissa)); }
-		} AssumeNormalizedPositive;
-	};
-	
 	mask64x4 operator==(const DExpVec4 &x) const { return (Exponent == x.Exponent) && (Mantissa == x.Mantissa); }
 	mask64x4 operator!=(const DExpVec4 &x) const { return (Exponent != x.Exponent) || (Mantissa != x.Mantissa); }
 	mask64x4 operator> (const DExpVec4 &x) const { return (Exponent > x.Exponent) || ((Exponent == x.Exponent) && (Mantissa >  x.Mantissa)); }
@@ -187,7 +164,7 @@ struct DExpVec4 {
 		DExpVec4 a = x.abs();
 		DExpVec4 b = y.abs();
 
-		return Select(a.AssumeNormalizedPositive > b, a, b);
+		return Select(a > b, a, b);
 	}
 };
 
@@ -223,11 +200,11 @@ inline dvec4 log2(const DExpVec4 &n) {
 }
 
 inline DExpVec4 min(const DExpVec4& a, const DExpVec4& b) {
-	return Select(a.AssumeNormalizedPositive < b, a, b);
+	return Select(a < b, a, b);
 }
 
 inline DExpVec4 max(const DExpVec4& a, const DExpVec4& b) {
-	return Select(a.AssumeNormalizedPositive > b, a, b);
+	return Select(a > b, a, b);
 }
 
 template <typename T> T HRExp(dvec4);

@@ -615,9 +615,15 @@ bool HandleEvent(const SDL_Event &Event) {
 
 } // namespace
 
+// --frames <n>      quit after n frames (0 = run until the window is closed)
+// --screenshot <f>  write the last frame to <f> as a BMP (used for testing)
 int main(int argc, char **argv) {
-	(void)argc;
-	(void)argv;
+	int RunFrames = 0;
+	const char *ScreenshotPath = nullptr;
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--frames") && i + 1 < argc) RunFrames = atoi(argv[++i]);
+		else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) ScreenshotPath = argv[++i];
+	}
 
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -666,11 +672,13 @@ int main(int argc, char **argv) {
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui::StyleColorsDark();
 	ImGui_ImplSDL3_InitForOpenGL(Window, GLContext);
-	ImGui_ImplOpenGL3_Init("#version 130");
+	ImGui_ImplOpenGL3_Init("#version 150");
 
 	bool Running = true;
+	long Frame = 0;
 	while (Running) {
 		ImGui_ImplSDL3_NewFrame();
+		ImGui_ImplOpenGL3_NewFrame();
 		ImGui::NewFrame();
 
 		SDL_Event Event;
@@ -719,7 +727,22 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, PixelWidth, PixelHeight);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+		if (ScreenshotPath && RunFrames > 0 && Frame + 1 >= RunFrames) {
+			std::vector<uint8_t> Pixels(size_t(PixelWidth) * PixelHeight * 4);
+			glReadPixels(0, 0, PixelWidth, PixelHeight, GL_RGBA, GL_UNSIGNED_BYTE, Pixels.data());
+			SDL_Surface *Surface = SDL_CreateSurfaceFrom(PixelWidth, PixelHeight, SDL_PIXELFORMAT_RGBA32, Pixels.data(), PixelWidth * 4);
+			if (Surface) {
+				// OpenGL's origin is the bottom left corner.
+				SDL_FlipSurface(Surface, SDL_FLIP_VERTICAL);
+				if (!SDL_SaveBMP(Surface, ScreenshotPath)) { fprintf(stderr, "cannot write %s: %s", ScreenshotPath, SDL_GetError()); fputc(10, stderr); }
+				SDL_DestroySurface(Surface);
+			}
+			Running = false;
+		}
+
 		EndRender();
+		Frame++;
+		if (RunFrames > 0 && Frame >= RunFrames) Running = false;
 	}
 
 	FContext.CancelAll();

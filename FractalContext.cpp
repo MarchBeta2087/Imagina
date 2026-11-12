@@ -277,7 +277,7 @@ void FractalContext::CancelAll() { // Cancel both, then wait.
 	}
 }
 
-FractalContext::FractalContext() : evaluator(new HInfLAEvaluator) {
+FractalContext::FractalContext() : ThreadCount(std::max(std::thread::hardware_concurrency(), 1u)), evaluator(new HInfLAEvaluator) {
 	RelLocation PrevLocation = CurrentLocation;
 	CenterCoordinate.X += CurrentLocation.X;
 	CenterCoordinate.Y += CurrentLocation.Y;

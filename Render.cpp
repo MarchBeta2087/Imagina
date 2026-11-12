@@ -2,7 +2,7 @@
 #include "GLUtils.h"
 
 const char *VertexShaderSource = "			\
-#version 130								\n\
+#version 150								\n\
 in vec2 VertexPosition;						\n\
 in vec2 Coordinate;							\n\
 out vec2 Coord;								\n\
@@ -14,7 +14,7 @@ void main() {								\n\
 ";
 
 const char *FragmentShaderSource = "	\n\
-#version 130							\n"
+#version 150							\n"
 #ifdef USE_GL_TEXTURE_RECTANGLE
 "uniform sampler2DRect Tex;				\n"
 #else
@@ -38,7 +38,7 @@ void main() {							\n\
 ";
 
 const char *LineVertexShaderSource = "			\
-#version 130								\n\
+#version 150								\n\
 in vec2 coord;								\n\
 void main() {								\n\
 	gl_Position = vec4(coord, -0.1, 1.0);	\n\
@@ -46,7 +46,7 @@ void main() {								\n\
 ";
 
 const char *LineFragmentShaderSource = "	\n\
-#version 130							\n\
+#version 150							\n\
 out vec4 Color;							\n\
 void main() {							\n\
 	Color = vec4(1.0, 1.0, 1.0, 0.625);return;			\n\

@@ -211,6 +211,13 @@ void Computation::Init() {
 	WorkerCount = HardwareConcurrency;
 #endif
 
+	// IMAGINA_THREADS limits the pool, which makes single threaded runs and
+	// race hunting possible.
+	if (const char *Limit = getenv("IMAGINA_THREADS")) {
+		size_t Requested = size_t(std::max(atoi(Limit), 1));
+		WorkerCount = std::min(WorkerCount, Requested);
+	}
+
 	Workers = new std::thread[WorkerCount];
 	for (size_t i = 0; i < WorkerCount; i++) {
 		Workers[i] = std::thread(Computation::WorkerFunction);

@@ -73,7 +73,9 @@ inline HPReal operator""_hp(long double x) {
 }
 
 inline HPReal operator""_hp(unsigned long long x) {
-	return HPReal(x);
+	// HPReal(unsigned long long) exists in MPIR but is ambiguous with GMP, the
+	// decimal form goes through the string constructor of both.
+	return HPReal(std::to_string(x));
 }
 
 inline double ToReal(const mpf_class& n) {

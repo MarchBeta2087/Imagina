@@ -53,10 +53,27 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|X86_64|AMD64|amd64|i[3-6]86)$")
 	set(Imagina_ArchFlags "-mavx2" "-mfma")
 endif()
 
+# GNU/Clang releases are built with -O2, not with CMake's default -O3: the -O3
+# build of the computation crashes intermittently (inside
+# FractalContext::Update() or later in the OpenGL driver), while the same
+# sources are stable at -O2 and with MSVC's /O2.  This matches the Windows
+# release flags the project has always used.
+if(NOT MSVC)
+	set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
+	set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG" CACHE STRING "" FORCE)
+endif()
+
+# Link time optimisation is opt-in and untested with the GCC/Clang builds.
+option(IMAGINA_ENABLE_LTO "Build with link time optimisation" OFF)
 include(CheckIPOSupported)
-check_ipo_supported(RESULT Imagina_IpoSupported OUTPUT Imagina_IpoError LANGUAGES CXX)
-if(NOT Imagina_IpoSupported)
-	message(STATUS "Link time optimisation is not available, building without it.")
+if(IMAGINA_ENABLE_LTO)
+	check_ipo_supported(RESULT Imagina_IpoSupported OUTPUT Imagina_IpoError LANGUAGES CXX)
+	if(NOT Imagina_IpoSupported)
+		message(STATUS "Link time optimisation is not available, building without it.")
+		set(IMAGINA_ENABLE_LTO OFF)
+	endif()
 endif()
 
 # Applies the compiler settings shared by every target.  Called from the
@@ -73,7 +90,7 @@ function(ImaginaApplyCompilerOptions Target)
 		target_compile_options(${Target} PRIVATE ${Imagina_ArchFlags} -fno-math-errno)
 	endif()
 
-	if(Imagina_IpoSupported)
+	if(IMAGINA_ENABLE_LTO)
 		set_property(TARGET ${Target} PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 	endif()
 endfunction()
@@ -227,6 +244,8 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 
 	ImaginaApplyCompilerOptions(Imagina)
 
+	# The front-end lives in sdl/ and includes the shared headers by name.
+	target_include_directories(Imagina PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -237,7 +256,8 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+	# No PNG here: only the Win32 front-end (File.cpp) writes PNG files so far.
+	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)

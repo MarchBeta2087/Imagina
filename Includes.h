@@ -25,8 +25,18 @@
 // The extension entry points are loaded at run time (GLUtils.cpp), so only the
 // PFN...PROC typedefs are needed here, never the prototypes.
 #if defined(_WIN32)
+// The Windows build ships its own copies next to the other dependencies, the
+// MinGW-w64 toolchains provide them as GL/glext.h and GL/wglext.h.
+#if __has_include(<glext.h>)
 #include <glext.h>
+#else
+#include <GL/glext.h>
+#endif
+#if __has_include(<wglext.h>)
 #include <wglext.h>
+#else
+#include <GL/wglext.h>
+#endif
 #elif __has_include(<GL/glext.h>)
 #include <GL/glext.h>
 #elif __has_include(<OpenGL/glext.h>)

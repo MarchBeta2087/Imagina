@@ -70,6 +70,31 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler clang  # LLVM/Clang
 ./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
 ```
 
-The window application uses the Win32 API, wgl and a `.rc` resource file, so it can
-only be built on Windows (with MSVC, MinGW-w64 or Clang); elsewhere `build.sh` builds
-the portable parts, currently the raw map codec test.
+### Front-ends
+
+There are two front-ends, selected with `-DIMAGINA_FRONTEND=win32|sdl` (the default is
+`win32` on Windows and `sdl` everywhere else):
+
+* `win32` - the original window, menus and dialogs (`MainWindow.cpp`, `Resource.rc`,
+  `File.cpp`, `ZoomExport.cpp`). Windows only.
+* `sdl` - SDL3 + Dear ImGui (`sdl/SDLMain.cpp`). Builds on Windows, Linux and macOS
+  and shares the whole computation and rendering core; the `File` menu is still
+  limited to "Quit" until `File.cpp` and `ZoomExport.cpp` are ported.
+
+SDL3 and Dear ImGui are looked up with `find_package` first and fetched from GitHub
+otherwise; `-DIMAGINA_IMGUI_PATH=<dir>` points at an existing Dear ImGui checkout and
+`-DMPIR_LIBRARY`/`-DMPIRXX_LIBRARY`/`-DZLIB_LIBRARY` at the library names of the
+toolchain in use.
+
+Notes:
+
+* GNU/Clang releases are compiled with `-O2`. The `-O3` build of the computation
+  crashes intermittently (see issue #6) and link time optimisation is off by default
+  (`-DIMAGINA_ENABLE_LTO=ON` to try it).
+* `IMAGINA_THREADS=<n>` limits the worker pool.
+* The SDL front-end accepts `--frames <n>` (quit after n frames) and
+  `--screenshot <file.bmp>`, which makes it usable for smoke tests:
+
+  ```
+  ./build/Imagina.exe --frames 90 --screenshot shot.bmp
+  ```

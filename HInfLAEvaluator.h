@@ -147,14 +147,13 @@ struct LAInfo {
 
 	template<typename real>
 	struct Temp {
-		bool unusable;
-		std::complex<real> newdz;
-	};
-
-	template<>
-	struct Temp<vreal> {
-		mask64x4 unusable;
-		vcomplex newdz;
+		// For the vectorized real type the comparisons produce masks, which is
+		// why this used to be an explicit specialization (a MSVC extension).
+		static constexpr bool Vectorized = std::is_same_v<real, vreal>;
+		using UnusableType = std::conditional_t<Vectorized, mask64x4, bool>;
+		using ComplexType = std::conditional_t<Vectorized, vcomplex, std::complex<real>>;
+		UnusableType unusable;
+		ComplexType newdz;
 	};
 
 	template<typename real>
