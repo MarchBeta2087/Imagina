@@ -111,10 +111,18 @@ private:
 
 	static size_t HardwareConcurrency;
 
+	// Set by Shutdown() to make the workers leave their loop.
+	static bool ShuttingDown;
+
 	static void WorkerFunction();
 
 public:
 	static void Init();
+
+	// Stops and joins the worker threads.  Has to be called before the globals
+	// they use (FContext, the task queue) are destroyed, otherwise a worker
+	// can touch them while the runtime shuts down.
+	static void Shutdown();
 
 	static ExecutionContext *AddTask(Task *task);
 	static ExecutionContext *AddTask(const std::function<void()> &function);

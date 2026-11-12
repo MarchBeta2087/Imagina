@@ -105,16 +105,18 @@ std::mutex Computation::TaskQueueMutex;
 std::condition_variable Computation::TaskConditionVariable;
 
 size_t Computation::HardwareConcurrency;
+bool Computation::ShuttingDown = false;
 
 void Computation::WorkerFunction() {
 	SetWorkerPriority();
 
 	std::unique_lock<std::mutex> TaskQueueLock(TaskQueueMutex);
 
-	while (true) {
+	while (!ShuttingDown) {
 		ExecutionContext *Context = nullptr;
 		std::unique_lock<std::mutex> ContextLock;
 		TaskConditionVariable.wait(TaskQueueLock, [&Context, &ContextLock, &TaskQueueLock]() { // Wait for a task to be available
+			if (ShuttingDown) return true;
 			for (ExecutionContext &context : TaskQueue) {
 				if (context.AcceptNewThreads) {
 					ContextLock = std::unique_lock(context.Mutex, std::try_to_lock);
@@ -133,6 +135,7 @@ void Computation::WorkerFunction() {
 			}
 			return false;
 		});
+		if (ShuttingDown) break; // Wake up for the shutdown, no task to run
 		if (TaskQueueLock.owns_lock()) TaskQueueLock.unlock();
 
 		size_t ThreadID = Context->ExecutingThreadCount;
@@ -221,6 +224,23 @@ void Computation::Init() {
 	Workers = new std::thread[WorkerCount];
 	for (size_t i = 0; i < WorkerCount; i++) {
 		Workers[i] = std::thread(Computation::WorkerFunction);
+	}
+}
+
+void Computation::Shutdown() {
+	{
+		std::lock_guard<std::mutex> lock(TaskQueueMutex);
+		ShuttingDown = true;
+	}
+	TaskConditionVariable.notify_all();
+
+	if (Workers) {
+		for (size_t i = 0; i < WorkerCount; i++) {
+			if (Workers[i].joinable()) Workers[i].join();
+		}
+		delete[] Workers;
+		Workers = nullptr;
+		WorkerCount = 0;
 	}
 }
 

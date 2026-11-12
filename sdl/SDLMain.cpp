@@ -634,6 +634,72 @@ void DrawDialogs() {
 	}
 }
 
+// --- crash reporting --------------------------------------------------------
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+
+static LONG WINAPI CrashHandler(EXCEPTION_POINTERS *Info) {
+	EXCEPTION_RECORD *Record = Info->ExceptionRecord;
+	uintptr_t Address = uintptr_t(Record->ExceptionAddress);
+	HMODULE Module = nullptr;
+	char ModuleName[MAX_PATH] = "?";
+	if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCSTR)Address, &Module)) {
+		GetModuleFileNameA(Module, ModuleName, sizeof(ModuleName));
+	}
+
+	fprintf(stderr, "crash: code %08lx at %p (%s+0x%llx)", (unsigned long)Record->ExceptionCode,
+		(void *)Address, ModuleName, (unsigned long long)(Address - uintptr_t(Module)));
+	fputc(10, stderr);
+
+	// Walk the stack of the faulting thread; the addresses can be resolved with
+	// addr2line against the executable.
+	HANDLE Process = GetCurrentProcess();
+	HANDLE Thread = GetCurrentThread();
+	SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+	if (SymInitialize(Process, nullptr, TRUE)) {
+		CONTEXT Context = *Info->ContextRecord;
+		STACKFRAME64 Frame = {};
+		Frame.AddrPC.Offset = Context.Rip;
+		Frame.AddrPC.Mode = AddrModeFlat;
+		Frame.AddrFrame.Offset = Context.Rbp;
+		Frame.AddrFrame.Mode = AddrModeFlat;
+		Frame.AddrStack.Offset = Context.Rsp;
+		Frame.AddrStack.Mode = AddrModeFlat;
+
+		for (int i = 0; i < 24; i++) {
+			if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, Process, Thread, &Frame, &Context, nullptr,
+					SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
+				break;
+			}
+			if (!Frame.AddrPC.Offset) break;
+
+			char SymbolBuffer[sizeof(SYMBOL_INFO) + 256] = {};
+			SYMBOL_INFO *Symbol = (SYMBOL_INFO *)SymbolBuffer;
+			Symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+			Symbol->MaxNameLen = 255;
+			DWORD64 Displacement = 0;
+			const char *Name = "<unknown>";
+			if (SymFromAddr(Process, Frame.AddrPC.Offset, &Displacement, Symbol)) Name = Symbol->Name;
+
+			IMAGEHLP_LINE64 Line = {};
+			Line.SizeOfStruct = sizeof(Line);
+			DWORD LineDisplacement = 0;
+			if (SymGetLineFromAddr64(Process, Frame.AddrPC.Offset, &LineDisplacement, &Line)) {
+				fprintf(stderr, "  #%02d %s+0x%llx  %s:%lu", i, Name, (unsigned long long)Displacement, Line.FileName, (unsigned long)Line.LineNumber);
+			} else {
+				fprintf(stderr, "  #%02d %s+0x%llx  %p", i, Name, (unsigned long long)Displacement, (void *)Frame.AddrPC.Offset);
+			}
+			fputc(10, stderr);
+		}
+		SymCleanup(Process);
+	}
+	fflush(stderr);
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif
+
 // --- window/input -----------------------------------------------------------
 void ResizeWindow(int32_t Width, int32_t Height) {
 	WindowWidth = size_t(Width);
@@ -748,13 +814,19 @@ int main(int argc, char **argv) {
 	const char *OpenPath = nullptr;
 	const char *SavePath = nullptr;
 	bool ShowAllWindows = false;
+	bool Stress = false;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) RunFrames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) ScreenshotPath = argv[++i];
 		else if (!strcmp(argv[i], "--open") && i + 1 < argc) OpenPath = argv[++i];
 		else if (!strcmp(argv[i], "--save") && i + 1 < argc) SavePath = argv[++i];
 		else if (!strcmp(argv[i], "--windows")) ShowAllWindows = true;
+		else if (!strcmp(argv[i], "--stress")) Stress = true;
 	}
+
+#ifdef _WIN32
+	if (getenv("IMAGINA_CRASH_REPORT")) SetUnhandledExceptionFilter(CrashHandler);
+#endif
 
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -835,6 +907,18 @@ int main(int argc, char **argv) {
 		}
 		if (!Running) break;
 
+		if (Stress) {
+			// Exercises the cancel/recompute paths: zooms in and out and moves the
+			// view, which invalidates the reference and the pixels over and over.
+			uint32_t Hash = uint32_t(Frame) * 2654435761u;
+			SRReal X = SRReal(Hash & 0xFFFF) / 65536.0 * 1.5 - 0.75;
+			SRReal Y = SRReal((Hash >> 16) & 0xFFFF) / 65536.0 * 1.5 - 0.75;
+			if ((Frame / 3) % 2 == 0) FContext.ZoomIn(X, Y);
+			else FContext.ZoomOut(X, Y);
+			if (Frame % 25 == 24) FContext.ResetLocation();
+			Global::Redraw = true;
+		}
+
 		FContext.Update();
 
 		BeginRender();
@@ -903,6 +987,7 @@ int main(int argc, char **argv) {
 	}
 
 	FContext.CancelAll();
+	Computation::Shutdown();
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();

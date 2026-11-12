@@ -271,7 +271,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	endif()
 
 	if(WIN32)
-		target_link_libraries(Imagina PRIVATE opengl32)
+		target_link_libraries(Imagina PRIVATE opengl32 dbghelp)
 	else()
 		find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 		target_link_libraries(Imagina PRIVATE OpenGL::GL)

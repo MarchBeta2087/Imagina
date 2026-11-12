@@ -92,6 +92,7 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 					FContext.pixelManager.Abort();
 					while (!FContext.pixelManager.Completed());
 					if (FContext.ReferenceWorker.joinable()) FContext.ReferenceWorker.detach();
+					Computation::Shutdown();
 					return 0;
 				}
 				TranslateMessage(&Message);
@@ -109,6 +110,7 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 					FContext.pixelManager.Abort();
 					while (!FContext.pixelManager.Completed());
 					if (FContext.ReferenceWorker.joinable()) FContext.ReferenceWorker.detach();
+					Computation::Shutdown();
 					return 0;
 				}
 			}
