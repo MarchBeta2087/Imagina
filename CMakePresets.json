@@ -9,15 +9,15 @@
     {
       "name": "windows-msvc",
       "displayName": "Windows x64, MSVC, Win32 front-end (vcpkg)",
-      "generator": "Ninja",
+      "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/build/windows-msvc",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
         "IMAGINA_FRONTEND": "win32",
         "MPIR_USE_DLL": "OFF",
         "BUILD_CODEC_TEST": "ON"
-      }
+      },
+      "architecture": "x64"
     },
     {
       "name": "windows-msvc-sdl",
@@ -26,7 +26,9 @@
       "binaryDir": "${sourceDir}/build/windows-msvc-sdl",
       "cacheVariables": {
         "IMAGINA_FRONTEND": "sdl"
-      }
+      },
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
     },
     {
       "name": "linux",
@@ -41,8 +43,17 @@
     }
   ],
   "buildPresets": [
-    { "name": "windows-msvc", "configurePreset": "windows-msvc" },
-    { "name": "windows-msvc-sdl", "configurePreset": "windows-msvc-sdl" },
-    { "name": "linux", "configurePreset": "linux" }
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc"
+    },
+    {
+      "name": "windows-msvc-sdl",
+      "configurePreset": "windows-msvc-sdl"
+    },
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    }
   ]
 }

@@ -111,24 +111,24 @@ jobs:
         run: cmake --preset windows-msvc
 
       - name: Build (Win32 front-end)
-        run: cmake --build --preset windows-msvc --parallel
+        run: cmake --build --preset windows-msvc --config Release --parallel
 
       - name: Configure (SDL front-end)
         run: cmake --preset windows-msvc-sdl
 
       - name: Build (SDL front-end)
-        run: cmake --build --preset windows-msvc-sdl --parallel
+        run: cmake --build --preset windows-msvc-sdl --config Release --parallel
 
       - name: Codec test
         shell: pwsh
         run: |
-          ./build/windows-msvc/RawMapCodecTest.exe
-          ./build/windows-msvc-sdl/RawMapCodecTest.exe
+          ./build/windows-msvc/Release/RawMapCodecTest.exe
+          ./build/windows-msvc-sdl/Release/RawMapCodecTest.exe
 
       - name: Run the SDL front-end for a few frames
         shell: pwsh
         run: |
-          ./build/windows-msvc-sdl/Imagina.exe --frames 120 --screenshot shot.bmp
+          ./build/windows-msvc-sdl/Release/Imagina.exe --frames 120 --screenshot shot.bmp
           Get-Item shot.bmp | Select-Object Length
 
   windows-mingw:
