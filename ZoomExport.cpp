@@ -1,4 +1,5 @@
 #include "Includes.h"
+#include "MainWindow.h"
 #include "ZoomExport.h"
 
 #include "File.h"

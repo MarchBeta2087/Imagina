@@ -1168,7 +1168,7 @@ JITEvaluator::JITEvaluator() {
 	using enum RegisterXMM;
 	using namespace RegisterAsMemAddress;
 
-	Buffer = (uint8_t *)VirtualAlloc(nullptr, 16384, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	Buffer = (uint8_t *)PlatformAllocateExecutableMemory(16384);
 	if (!Buffer) throw;
 
 	Encoder RefEncoder(Buffer, 8192, 2048);

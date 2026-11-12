@@ -1,5 +1,9 @@
 #pragma once
+#if defined(_MSC_VER)
 #include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 #include <stdint.h>
 #include <complex>
 

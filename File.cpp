@@ -1,4 +1,5 @@
 #include "Includes.h"
+#include "MainWindow.h"
 #include "File.h"
 
 #include <fstream>

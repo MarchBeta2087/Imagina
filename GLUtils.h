@@ -2,35 +2,35 @@
 #define _GLUTIL_H_
 
 // PLATFORM DEPENDENT
-extern PFNGLCREATEPROGRAMPROC glCreateProgram;
-extern PFNGLCREATESHADERPROC glCreateShader;
-extern PFNGLSHADERSOURCEPROC glShaderSource;
-extern PFNGLCOMPILESHADERPROC glCompileShader;
-extern PFNGLGETSHADERIVPROC glGetShaderiv;
-extern PFNGLGETPROGRAMIVPROC glGetProgramiv;
-extern PFNGLDELETESHADERPROC glDeleteShader;
-extern PFNGLATTACHSHADERPROC glAttachShader;
-extern PFNGLLINKPROGRAMPROC glLinkProgram;
-extern PFNGLUSEPROGRAMPROC	glUseProgram;
+extern PFNGLCREATEPROGRAMPROC GL_glCreateProgram;
+extern PFNGLCREATESHADERPROC GL_glCreateShader;
+extern PFNGLSHADERSOURCEPROC GL_glShaderSource;
+extern PFNGLCOMPILESHADERPROC GL_glCompileShader;
+extern PFNGLGETSHADERIVPROC GL_glGetShaderiv;
+extern PFNGLGETPROGRAMIVPROC GL_glGetProgramiv;
+extern PFNGLDELETESHADERPROC GL_glDeleteShader;
+extern PFNGLATTACHSHADERPROC GL_glAttachShader;
+extern PFNGLLINKPROGRAMPROC GL_glLinkProgram;
+extern PFNGLUSEPROGRAMPROC	GL_glUseProgram;
 
-extern PFNGLGENVERTEXARRAYSPROC			glGenVertexArrays;
-extern PFNGLBINDVERTEXARRAYPROC			glBindVertexArray;
-extern PFNGLGENBUFFERSPROC				glGenBuffers;
-extern PFNGLBINDBUFFERPROC				glBindBuffer;
-extern PFNGLBUFFERDATAPROC				glBufferData;
-extern PFNGLBUFFERSUBDATAPROC			glBufferSubData;
-extern PFNGLGETATTRIBLOCATIONPROC		glGetAttribLocation;
-extern PFNGLENABLEVERTEXATTRIBARRAYPROC	glEnableVertexAttribArray;
-extern PFNGLVERTEXATTRIBPOINTERPROC		glVertexAttribPointer;
-extern PFNGLACTIVETEXTUREPROC			glActiveTexture;
-extern PFNGLGETUNIFORMLOCATIONPROC		glGetUniformLocation;
-extern PFNGLUNIFORM1IPROC				glUniform1i;
-extern PFNGLUNIFORM1FPROC				glUniform1f;
+extern PFNGLGENVERTEXARRAYSPROC			GL_glGenVertexArrays;
+extern PFNGLBINDVERTEXARRAYPROC			GL_glBindVertexArray;
+extern PFNGLGENBUFFERSPROC				GL_glGenBuffers;
+extern PFNGLBINDBUFFERPROC				GL_glBindBuffer;
+extern PFNGLBUFFERDATAPROC				GL_glBufferData;
+extern PFNGLBUFFERSUBDATAPROC			GL_glBufferSubData;
+extern PFNGLGETATTRIBLOCATIONPROC		GL_glGetAttribLocation;
+extern PFNGLENABLEVERTEXATTRIBARRAYPROC	GL_glEnableVertexAttribArray;
+extern PFNGLVERTEXATTRIBPOINTERPROC		GL_glVertexAttribPointer;
+extern PFNGLACTIVETEXTUREPROC			GL_glActiveTexture;
+extern PFNGLGETUNIFORMLOCATIONPROC		GL_glGetUniformLocation;
+extern PFNGLUNIFORM1IPROC				GL_glUniform1i;
+extern PFNGLUNIFORM1FPROC				GL_glUniform1f;
 
-extern PFNWGLSWAPINTERVALEXTPROC		wglSwapIntervalEXT;
+extern PFNWGLSWAPINTERVALEXTPROC		GL_wglSwapIntervalEXT;
 
-extern PFNGLGETSHADERINFOLOGPROC		glGetShaderInfoLog;
-extern PFNGLGETPROGRAMINFOLOGPROC		glGetProgramInfoLog;
+extern PFNGLGETSHADERINFOLOGPROC		GL_glGetShaderInfoLog;
+extern PFNGLGETPROGRAMINFOLOGPROC		GL_glGetProgramInfoLog;
 
 void InitGLExtensions();
 

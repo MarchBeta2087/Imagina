@@ -1,6 +1,10 @@
 #pragma once
 #include <stdint.h>
+#if defined(_MSC_VER)
 #include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 #include <type_traits>
 #include <bit>
 #include <mpirxx.h>

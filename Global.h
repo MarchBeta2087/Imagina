@@ -8,9 +8,6 @@ extern FractalTypeEnum CurrentFractalType;
 
 extern FractalContext FContext;
 
-extern size_t InitialWindowWidth;
-extern size_t InitialWindowHeight;
-
 namespace Global {
 	constexpr SRReal MaxPreModMultiplier = 4096.0_sr;
 	constexpr SRReal DefaultPreModMultiplier = 64.0_sr;

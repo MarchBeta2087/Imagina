@@ -2,6 +2,7 @@
 #define _TYPES_H_
 
 #include <mpirxx.h>
+#include "Platform.h"
 #include "FloatExp.h"
 #include "ArbitraryPrecision.h"
 #include "Vector4.h"
@@ -114,7 +115,7 @@ class ReservedMemoryArray {
 
 	void Commit() {
 		if (CommittedSize + CommitSize > ReservedSize) throw "";
-		VirtualAlloc(((uint8_t *)Data) + CommittedSize, CommitSize, MEM_COMMIT, PAGE_READWRITE);
+		PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, CommitSize);
 		CommittedSize += CommitSize;
 		Capacity = CommittedSize / sizeof(T);
 	}
@@ -122,7 +123,7 @@ class ReservedMemoryArray {
 public:
 
 	ReservedMemoryArray() {}
-	ReservedMemoryArray(size_t ReserveSize) : ReservedSize(ReserveSize), MaxCapacity(ReserveSize / sizeof(T)), Data((T *)VirtualAlloc(nullptr, ReserveSize, MEM_RESERVE, PAGE_READWRITE)) {}
+	ReservedMemoryArray(size_t ReserveSize) : ReservedSize(ReserveSize), MaxCapacity(ReserveSize / sizeof(T)), Data((T *)PlatformReserveMemory(ReserveSize)) {}
 	ReservedMemoryArray(const ReservedMemoryArray &a) = delete;
 	ReservedMemoryArray(ReservedMemoryArray &&a) : ReservedSize(a.ReservedSize), CommittedSize(a.CommittedSize), MaxCapacity(a.MaxCapacity), Capacity(a.Capacity), Size(a.Size), Data(a.Data) {
 		a.Data = nullptr;
@@ -134,7 +135,7 @@ public:
 					Data[i].~T();
 				}
 			}
-			VirtualFree(Data, 0, MEM_RELEASE);
+			PlatformReleaseMemory(Data, ReservedSize);
 		}
 	}
 
@@ -160,7 +161,7 @@ public:
 		if (NewSize > Capacity) {
 			size_t NewCommittedSize = (NewSize * sizeof(T) + CommitSize - 1) & ~(CommitSize - 1); // i * sizeof(complex) round up to nearest multiple of CommitSize
 			if (NewCommittedSize > ReservedSize) throw "";
-			VirtualAlloc(((uint8_t *)Data) + CommittedSize, NewCommittedSize - CommittedSize, MEM_COMMIT, PAGE_READWRITE);
+			PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, NewCommittedSize - CommittedSize);
 			CommittedSize = NewCommittedSize;
 			Capacity = CommittedSize / sizeof(T);
 		}
@@ -209,18 +210,18 @@ public:
 			Commit();
 			size_t CopySize = std::min(CommitSize, ASize - Offset);
 			memcpy(data + size, AData + Offset, CopySize);
-			VirtualFree(((uint8_t *)AData) + (Offset & ~(CommitSize - 1)), CommitSize, MEM_DECOMMIT);
+			PlatformDecommitMemory(((uint8_t *)AData) + (Offset & ~(CommitSize - 1)), CommitSize);
 			size += CopySize;
 			Offset += CopySize;
 		}
 		Size += a.Size;
-		VirtualFree(AData, 0, MEM_RELEASE);
+		PlatformReleaseMemory(AData, a.GetReservedSize());
 		a = ReservedMemoryArray();
 	}
 	void ShrinkToFit() {
 		if (Size + CommitSize / sizeof(T) * 2 < Capacity) {
 			size_t NewCommittedSize = (Size * sizeof(T) + CommitSize - 1) & ~(CommitSize - 1); // i * sizeof(complex) round up to nearest multiple of CommitSize
-			VirtualFree(((uint8_t *)Data) + NewCommittedSize, CommittedSize - NewCommittedSize, MEM_DECOMMIT);
+			PlatformDecommitMemory(((uint8_t *)Data) + NewCommittedSize, CommittedSize - NewCommittedSize);
 			CommittedSize = NewCommittedSize;
 			Capacity = CommittedSize / sizeof(T);
 		}

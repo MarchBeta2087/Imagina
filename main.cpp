@@ -1,4 +1,5 @@
 #include "Includes.h"
+#include "MainWindow.h"
 #include <GL/glu.h>
 #include <iostream>
 #include <math.h>

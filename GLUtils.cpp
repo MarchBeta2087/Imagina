@@ -1,131 +1,128 @@
 #include "Includes.h"
 #include <iostream>
 
-PFNGLCREATEPROGRAMPROC	glCreateProgram;
-PFNGLCREATESHADERPROC	glCreateShader;
-PFNGLSHADERSOURCEPROC	glShaderSource;
-PFNGLCOMPILESHADERPROC	glCompileShader;
-PFNGLGETSHADERIVPROC	glGetShaderiv;
-PFNGLGETPROGRAMIVPROC	glGetProgramiv;
-PFNGLDELETESHADERPROC	glDeleteShader;
-PFNGLATTACHSHADERPROC	glAttachShader;
-PFNGLLINKPROGRAMPROC	glLinkProgram;
-PFNGLUSEPROGRAMPROC		glUseProgram;
+PFNGLCREATEPROGRAMPROC	GL_glCreateProgram;
+PFNGLCREATESHADERPROC	GL_glCreateShader;
+PFNGLSHADERSOURCEPROC	GL_glShaderSource;
+PFNGLCOMPILESHADERPROC	GL_glCompileShader;
+PFNGLGETSHADERIVPROC	GL_glGetShaderiv;
+PFNGLGETPROGRAMIVPROC	GL_glGetProgramiv;
+PFNGLDELETESHADERPROC	GL_glDeleteShader;
+PFNGLATTACHSHADERPROC	GL_glAttachShader;
+PFNGLLINKPROGRAMPROC	GL_glLinkProgram;
+PFNGLUSEPROGRAMPROC		GL_glUseProgram;
 
-PFNGLGENVERTEXARRAYSPROC			glGenVertexArrays;
-PFNGLBINDVERTEXARRAYPROC			glBindVertexArray;
-PFNGLGENBUFFERSPROC					glGenBuffers;
-PFNGLBINDBUFFERPROC					glBindBuffer;
-PFNGLBUFFERDATAPROC					glBufferData;
-PFNGLBUFFERSUBDATAPROC				glBufferSubData;
-PFNGLGETATTRIBLOCATIONPROC			glGetAttribLocation;
-PFNGLENABLEVERTEXATTRIBARRAYPROC	glEnableVertexAttribArray;
-PFNGLVERTEXATTRIBPOINTERPROC		glVertexAttribPointer;
-PFNGLACTIVETEXTUREPROC				glActiveTexture;
-PFNGLGETUNIFORMLOCATIONPROC			glGetUniformLocation;
-PFNGLUNIFORM1IPROC					glUniform1i;
-PFNGLUNIFORM1FPROC					glUniform1f;
+PFNGLGENVERTEXARRAYSPROC			GL_glGenVertexArrays;
+PFNGLBINDVERTEXARRAYPROC			GL_glBindVertexArray;
+PFNGLGENBUFFERSPROC					GL_glGenBuffers;
+PFNGLBINDBUFFERPROC					GL_glBindBuffer;
+PFNGLBUFFERDATAPROC					GL_glBufferData;
+PFNGLBUFFERSUBDATAPROC				GL_glBufferSubData;
+PFNGLGETATTRIBLOCATIONPROC			GL_glGetAttribLocation;
+PFNGLENABLEVERTEXATTRIBARRAYPROC	GL_glEnableVertexAttribArray;
+PFNGLVERTEXATTRIBPOINTERPROC		GL_glVertexAttribPointer;
+PFNGLACTIVETEXTUREPROC				GL_glActiveTexture;
+PFNGLGETUNIFORMLOCATIONPROC			GL_glGetUniformLocation;
+PFNGLUNIFORM1IPROC					GL_glUniform1i;
+PFNGLUNIFORM1FPROC					GL_glUniform1f;
 
-PFNWGLSWAPINTERVALEXTPROC			wglSwapIntervalEXT;
+PFNWGLSWAPINTERVALEXTPROC			GL_wglSwapIntervalEXT;
 
-PFNGLGETSHADERINFOLOGPROC			glGetShaderInfoLog;
-PFNGLGETPROGRAMINFOLOGPROC			glGetProgramInfoLog;
+PFNGLGETSHADERINFOLOGPROC			GL_glGetShaderInfoLog;
+PFNGLGETPROGRAMINFOLOGPROC			GL_glGetProgramInfoLog;
 
 void InitGLExtensions() {
-	glCreateProgram	= (PFNGLCREATEPROGRAMPROC)	wglGetProcAddress("glCreateProgram");
-	glCreateShader	= (PFNGLCREATESHADERPROC)	wglGetProcAddress("glCreateShader");
-	glShaderSource	= (PFNGLSHADERSOURCEPROC)	wglGetProcAddress("glShaderSource");
-	glCompileShader	= (PFNGLCOMPILESHADERPROC)	wglGetProcAddress("glCompileShader");
-	glGetShaderiv	= (PFNGLGETSHADERIVPROC)	wglGetProcAddress("glGetShaderiv");
-	glGetProgramiv	= (PFNGLGETPROGRAMIVPROC)	wglGetProcAddress("glGetProgramiv");
-	glDeleteShader	= (PFNGLDELETESHADERPROC)	wglGetProcAddress("glDeleteShader");
-	glAttachShader	= (PFNGLATTACHSHADERPROC)	wglGetProcAddress("glAttachShader");
-	glLinkProgram	= (PFNGLLINKPROGRAMPROC)	wglGetProcAddress("glLinkProgram");
-	glUseProgram	= (PFNGLUSEPROGRAMPROC)		wglGetProcAddress("glUseProgram");
-	
-	glGenVertexArrays			= (PFNGLGENVERTEXARRAYSPROC)			wglGetProcAddress("glGenVertexArrays");
-	glBindVertexArray			= (PFNGLBINDVERTEXARRAYPROC)			wglGetProcAddress("glBindVertexArray");
-	glGenBuffers				= (PFNGLGENBUFFERSPROC)					wglGetProcAddress("glGenBuffers");
-	glBindBuffer				= (PFNGLBINDBUFFERPROC)					wglGetProcAddress("glBindBuffer");
-	glBufferData				= (PFNGLBUFFERDATAPROC)					wglGetProcAddress("glBufferData");
-	glBufferSubData				= (PFNGLBUFFERSUBDATAPROC)				wglGetProcAddress("glBufferSubData");
-	glGetAttribLocation			= (PFNGLGETATTRIBLOCATIONPROC)			wglGetProcAddress("glGetAttribLocation");
-	glEnableVertexAttribArray	= (PFNGLENABLEVERTEXATTRIBARRAYPROC)	wglGetProcAddress("glEnableVertexAttribArray");
-	glVertexAttribPointer		= (PFNGLVERTEXATTRIBPOINTERPROC)		wglGetProcAddress("glVertexAttribPointer");
-	glActiveTexture				= (PFNGLACTIVETEXTUREPROC)				wglGetProcAddress("glActiveTexture");
-	glGetUniformLocation		= (PFNGLGETUNIFORMLOCATIONPROC)			wglGetProcAddress("glGetUniformLocation");
-	glUniform1i					= (PFNGLUNIFORM1IPROC)					wglGetProcAddress("glUniform1i");
-	glUniform1f					= (PFNGLUNIFORM1FPROC)					wglGetProcAddress("glUniform1f");
-
-	wglSwapIntervalEXT			= (PFNWGLSWAPINTERVALEXTPROC)			wglGetProcAddress("wglSwapIntervalEXT");
-
-	glGetShaderInfoLog			= (PFNGLGETSHADERINFOLOGPROC)			wglGetProcAddress("glGetShaderInfoLog");
-	glGetProgramInfoLog			= (PFNGLGETPROGRAMINFOLOGPROC)			wglGetProcAddress("glGetProgramInfoLog");
+	GL_glCreateProgram = (PFNGLCREATEPROGRAMPROC)PlatformGetGLProcAddress("glCreateProgram");
+	GL_glCreateShader = (PFNGLCREATESHADERPROC)PlatformGetGLProcAddress("glCreateShader");
+	GL_glShaderSource = (PFNGLSHADERSOURCEPROC)PlatformGetGLProcAddress("glShaderSource");
+	GL_glCompileShader = (PFNGLCOMPILESHADERPROC)PlatformGetGLProcAddress("glCompileShader");
+	GL_glGetShaderiv = (PFNGLGETSHADERIVPROC)PlatformGetGLProcAddress("glGetShaderiv");
+	GL_glGetProgramiv = (PFNGLGETPROGRAMIVPROC)PlatformGetGLProcAddress("glGetProgramiv");
+	GL_glDeleteShader = (PFNGLDELETESHADERPROC)PlatformGetGLProcAddress("glDeleteShader");
+	GL_glAttachShader = (PFNGLATTACHSHADERPROC)PlatformGetGLProcAddress("glAttachShader");
+	GL_glLinkProgram = (PFNGLLINKPROGRAMPROC)PlatformGetGLProcAddress("glLinkProgram");
+	GL_glUseProgram = (PFNGLUSEPROGRAMPROC)PlatformGetGLProcAddress("glUseProgram");
+	GL_glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)PlatformGetGLProcAddress("glGenVertexArrays");
+	GL_glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)PlatformGetGLProcAddress("glBindVertexArray");
+	GL_glGenBuffers = (PFNGLGENBUFFERSPROC)PlatformGetGLProcAddress("glGenBuffers");
+	GL_glBindBuffer = (PFNGLBINDBUFFERPROC)PlatformGetGLProcAddress("glBindBuffer");
+	GL_glBufferData = (PFNGLBUFFERDATAPROC)PlatformGetGLProcAddress("glBufferData");
+	GL_glBufferSubData = (PFNGLBUFFERSUBDATAPROC)PlatformGetGLProcAddress("glBufferSubData");
+	GL_glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)PlatformGetGLProcAddress("glGetAttribLocation");
+	GL_glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)PlatformGetGLProcAddress("glEnableVertexAttribArray");
+	GL_glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)PlatformGetGLProcAddress("glVertexAttribPointer");
+	GL_glActiveTexture = (PFNGLACTIVETEXTUREPROC)PlatformGetGLProcAddress("glActiveTexture");
+	GL_glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)PlatformGetGLProcAddress("glGetUniformLocation");
+	GL_glUniform1i = (PFNGLUNIFORM1IPROC)PlatformGetGLProcAddress("glUniform1i");
+	GL_glUniform1f = (PFNGLUNIFORM1FPROC)PlatformGetGLProcAddress("glUniform1f");
+	GL_wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)PlatformGetGLProcAddress("wglSwapIntervalEXT");
+	GL_glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)PlatformGetGLProcAddress("glGetShaderInfoLog");
+	GL_glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)PlatformGetGLProcAddress("glGetProgramInfoLog");
 }
 
 GLuint LoadShaders(const char *VSSource, const char *FSSource) {
-	GLuint Program = glCreateProgram();
+	GLuint Program = GL_glCreateProgram();
 
-	GLuint VertexShader = glCreateShader(GL_VERTEX_SHADER);
-	GLuint FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(VertexShader, 1, &VSSource, nullptr);
-	glShaderSource(FragmentShader, 1, &FSSource, nullptr);
-	glCompileShader(VertexShader);
+	GLuint VertexShader = GL_glCreateShader(GL_VERTEX_SHADER);
+	GLuint FragmentShader = GL_glCreateShader(GL_FRAGMENT_SHADER);
+	GL_glShaderSource(VertexShader, 1, &VSSource, nullptr);
+	GL_glShaderSource(FragmentShader, 1, &FSSource, nullptr);
+	GL_glCompileShader(VertexShader);
 
 	GLint Compiled;
-	glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &Compiled);
+	GL_glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &Compiled);
 	if (!Compiled) {
 #ifdef _DEBUG
 		GLsizei Length;
-		glGetShaderiv(VertexShader, GL_INFO_LOG_LENGTH, &Length);
+		GL_glGetShaderiv(VertexShader, GL_INFO_LOG_LENGTH, &Length);
 
 		GLchar *Log = new GLchar[Length + 1];
-		glGetShaderInfoLog(VertexShader, Length, &Length, Log);
+		GL_glGetShaderInfoLog(VertexShader, Length, &Length, Log);
 		std::cerr << "Shader compilation failed: " << Log << std::endl;
 		delete[] Log;
 #endif /* DEBUG */
-		glDeleteShader(VertexShader);
+		GL_glDeleteShader(VertexShader);
 		return 0;
 	}
 
-	glCompileShader(FragmentShader);
+	GL_glCompileShader(FragmentShader);
 
-	glGetShaderiv(FragmentShader, GL_COMPILE_STATUS, &Compiled);
+	GL_glGetShaderiv(FragmentShader, GL_COMPILE_STATUS, &Compiled);
 	if (!Compiled) {
 #ifdef _DEBUG
 		GLsizei Length;
-		glGetShaderiv(FragmentShader, GL_INFO_LOG_LENGTH, &Length);
+		GL_glGetShaderiv(FragmentShader, GL_INFO_LOG_LENGTH, &Length);
 
 		GLchar *Log = new GLchar[Length + 1];
-		glGetShaderInfoLog(FragmentShader, Length, &Length, Log);
+		GL_glGetShaderInfoLog(FragmentShader, Length, &Length, Log);
 		std::cerr << "Shader compilation failed: " << Log << std::endl;
 		delete[] Log;
 #endif /* DEBUG */
-		glDeleteShader(VertexShader);
-		glDeleteShader(FragmentShader);
+		GL_glDeleteShader(VertexShader);
+		GL_glDeleteShader(FragmentShader);
 		return 0;
 	}
 
-	glAttachShader(Program, VertexShader);
-	glAttachShader(Program, FragmentShader);
+	GL_glAttachShader(Program, VertexShader);
+	GL_glAttachShader(Program, FragmentShader);
 
-	glLinkProgram(Program);
+	GL_glLinkProgram(Program);
 
 	GLint Linked;
-	glGetProgramiv(Program, GL_LINK_STATUS, &Linked);
+	GL_glGetProgramiv(Program, GL_LINK_STATUS, &Linked);
 	if (!Linked) {
 #ifdef _DEBUG
 		GLsizei Length;
-		glGetProgramiv(Program, GL_INFO_LOG_LENGTH, &Length);
+		GL_glGetProgramiv(Program, GL_INFO_LOG_LENGTH, &Length);
 
 		GLchar *Log = new GLchar[Length + 1];
-		glGetProgramInfoLog(Program, Length, &Length, Log);
+		GL_glGetProgramInfoLog(Program, Length, &Length, Log);
 		std::cerr << "Shader linking failed: " << Log << std::endl;
 		delete[] Log;
 #endif /* DEBUG */
 
-		glDeleteShader(VertexShader);
-		glDeleteShader(FragmentShader);
+		GL_glDeleteShader(VertexShader);
+		GL_glDeleteShader(FragmentShader);
 
 		return 0;
 	}

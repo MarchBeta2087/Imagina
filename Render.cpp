@@ -87,32 +87,32 @@ void InitRenderResources() {
 #ifdef _WIN32
 	InitGLExtensions();
 
-	wglSwapIntervalEXT(1);
+	GL_wglSwapIntervalEXT(1);
 #endif
 	ShaderProgram = LoadShaders(VertexShaderSource, FragmentShaderSource);
 
-	glUseProgram(ShaderProgram);
+	GL_glUseProgram(ShaderProgram);
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	GL_glGenVertexArrays(1, &vao);
+	GL_glBindVertexArray(vao);
 
-	glGenBuffers(1, &PositionBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, PositionBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(PositionArray), PositionArray, GL_DYNAMIC_DRAW);
+	GL_glGenBuffers(1, &PositionBuffer);
+	GL_glBindBuffer(GL_ARRAY_BUFFER, PositionBuffer);
+	GL_glBufferData(GL_ARRAY_BUFFER, sizeof(PositionArray), PositionArray, GL_DYNAMIC_DRAW);
 
-	PositionAttribute = glGetAttribLocation(ShaderProgram, "VertexPosition");
-	glEnableVertexAttribArray(PositionAttribute);
-	glVertexAttribPointer(PositionAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	PositionAttribute = GL_glGetAttribLocation(ShaderProgram, "VertexPosition");
+	GL_glEnableVertexAttribArray(PositionAttribute);
+	GL_glVertexAttribPointer(PositionAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	glGenBuffers(1, &CoordinateBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, CoordinateBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CoordinateArray), CoordinateArray, GL_DYNAMIC_DRAW);
+	GL_glGenBuffers(1, &CoordinateBuffer);
+	GL_glBindBuffer(GL_ARRAY_BUFFER, CoordinateBuffer);
+	GL_glBufferData(GL_ARRAY_BUFFER, sizeof(CoordinateArray), CoordinateArray, GL_DYNAMIC_DRAW);
 
-	CoordinateAttribute = glGetAttribLocation(ShaderProgram, "Coordinate");
-	glEnableVertexAttribArray(CoordinateAttribute);
-	glVertexAttribPointer(CoordinateAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	CoordinateAttribute = GL_glGetAttribLocation(ShaderProgram, "Coordinate");
+	GL_glEnableVertexAttribArray(CoordinateAttribute);
+	GL_glVertexAttribPointer(CoordinateAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	glActiveTexture(GL_TEXTURE2);
+	GL_glActiveTexture(GL_TEXTURE2);
 	glGenTextures(1, &PaletteImage);
 	glBindTexture(GL_TEXTURE_1D, PaletteImage);
 
@@ -121,7 +121,7 @@ void InitRenderResources() {
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-	glUniform1i(glGetUniformLocation(ShaderProgram, "Palette"), 2);
+	GL_glUniform1i(GL_glGetUniformLocation(ShaderProgram, "Palette"), 2);
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
@@ -129,19 +129,19 @@ void InitRenderResources() {
 	glLineWidth(2);
 
 	LineShaderProgram = LoadShaders(LineVertexShaderSource, LineFragmentShaderSource);
-	glUseProgram(LineShaderProgram);
+	GL_glUseProgram(LineShaderProgram);
 	
-	glGenBuffers(1, &LineCoordBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, LineCoordBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 2, nullptr, GL_STREAM_DRAW);
+	GL_glGenBuffers(1, &LineCoordBuffer);
+	GL_glBindBuffer(GL_ARRAY_BUFFER, LineCoordBuffer);
+	GL_glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 2, nullptr, GL_STREAM_DRAW);
 	
-	LineCoordAttribute = glGetAttribLocation(LineShaderProgram, "coord");
-	glEnableVertexAttribArray(LineCoordAttribute);
-	glVertexAttribPointer(LineCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+	LineCoordAttribute = GL_glGetAttribLocation(LineShaderProgram, "coord");
+	GL_glEnableVertexAttribArray(LineCoordAttribute);
+	GL_glVertexAttribPointer(LineCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 	auto err = glGetError();
 
-	if (err != GL_NO_ERROR) __debugbreak();
+	if (err != GL_NO_ERROR) PlatformDebugBreak();
 
 	ResizeViewport(InitialWindowWidth, InitialWindowHeight);
 }
@@ -157,12 +157,12 @@ void RenderFractal(FractalContext &Context) {
 	Context.GetTextures(td, 32, NumberObtained);
 	if (!NumberObtained) return;
 
-	glUseProgram(ShaderProgram);
+	GL_glUseProgram(ShaderProgram);
 
-	glActiveTexture(GL_TEXTURE0);
+	GL_glActiveTexture(GL_TEXTURE0);
 
-	glUniform1f(glGetUniformLocation(ShaderProgram, "ItMul"), 1.0 / Global::ItDiv);
-	glUniform1f(glGetUniformLocation(ShaderProgram, "MaxIt"), Global::MaxIt);
+	GL_glUniform1f(GL_glGetUniformLocation(ShaderProgram, "ItMul"), 1.0 / Global::ItDiv);
+	GL_glUniform1f(GL_glGetUniformLocation(ShaderProgram, "MaxIt"), Global::MaxIt);
 
 	RelRect View;
 	View.X = Context.RenderLocation.X;
@@ -170,7 +170,7 @@ void RenderFractal(FractalContext &Context) {
 	View.HalfH = Context.RenderLocation.HalfH;
 	View.HalfW = View.HalfH * Context.ImageWidth / Context.ImageHeight;
 	for (size_t i = 0; i < NumberObtained; i++) {
-		glActiveTexture(GL_TEXTURE0);
+		GL_glActiveTexture(GL_TEXTURE0);
 		glBindTexture(TARGET_TEXTRUE, td[i].Texture);
 
 		HRReal diffXFractal = td[i].FractalRect.X - View.X;
@@ -207,18 +207,18 @@ void RenderFractal(FractalContext &Context) {
 		CoordinateArray[6] = Right;
 		CoordinateArray[7] = Bottom;
 
-		glBindBuffer(GL_ARRAY_BUFFER, PositionBuffer);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(PositionArray), PositionArray);
-		glVertexAttribPointer(PositionAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+		GL_glBindBuffer(GL_ARRAY_BUFFER, PositionBuffer);
+		GL_glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(PositionArray), PositionArray);
+		GL_glVertexAttribPointer(PositionAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-		glBindBuffer(GL_ARRAY_BUFFER, CoordinateBuffer);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(CoordinateArray), CoordinateArray);
-		glVertexAttribPointer(CoordinateAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+		GL_glBindBuffer(GL_ARRAY_BUFFER, CoordinateBuffer);
+		GL_glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(CoordinateArray), CoordinateArray);
+		GL_glVertexAttribPointer(CoordinateAttribute, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-		glUniform1i(glGetUniformLocation(ShaderProgram, "Tex"), 0);
-		glUniform1f(glGetUniformLocation(ShaderProgram, "Depth"), float(i) / NumberObtained);
-		glUniform1i(glGetUniformLocation(ShaderProgram, "GammaCorrection"), Global::GammaCorrection);
-		glUniform1f(glGetUniformLocation(ShaderProgram, "ColorOffset"), Global::ColoringValueOffset + 0.5 / PaletteSize);
+		GL_glUniform1i(GL_glGetUniformLocation(ShaderProgram, "Tex"), 0);
+		GL_glUniform1f(GL_glGetUniformLocation(ShaderProgram, "Depth"), float(i) / NumberObtained);
+		GL_glUniform1i(GL_glGetUniformLocation(ShaderProgram, "GammaCorrection"), Global::GammaCorrection);
+		GL_glUniform1f(GL_glGetUniformLocation(ShaderProgram, "ColorOffset"), Global::ColoringValueOffset + 0.5 / PaletteSize);
 
 		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	}
@@ -226,14 +226,14 @@ void RenderFractal(FractalContext &Context) {
 
 void SetPalette(const std::vector<RGBA> &Palette) {
 	if (!Palette.size()) return;
-	glActiveTexture(GL_TEXTURE2);
+	GL_glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_1D, PaletteImage);
 	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, Palette.size(), 0, GL_RGBA, GL_FLOAT, (const GLvoid *)Palette.data());
 	PaletteSize = Palette.size();
 }
 
 void RenderLineToFeature(double mouseX, double mouseY, double featureX, double featureY) {
-	glUseProgram(LineShaderProgram);
+	GL_glUseProgram(LineShaderProgram);
 
 	double diffX = featureX - mouseX;
 	double diffY = featureY - mouseY;
@@ -250,9 +250,9 @@ void RenderLineToFeature(double mouseX, double mouseY, double featureX, double f
 	float invAspectRatio = float(FContext.ImageHeight) / FContext.ImageWidth;
 	float coords[4] = { (float)mouseX * invAspectRatio, (float)mouseY, (float)featureX * invAspectRatio, (float)featureY };
 
-	glBindBuffer(GL_ARRAY_BUFFER, LineCoordBuffer);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(coords), coords);
-	glVertexAttribPointer(LineCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	GL_glBindBuffer(GL_ARRAY_BUFFER, LineCoordBuffer);
+	GL_glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(coords), coords);
+	GL_glVertexAttribPointer(LineCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glDrawArrays(GL_LINES, 0, 2);
 }
@@ -274,7 +274,7 @@ void BeginRender() {
 }
 
 void EndRender() {
-	SwapBuffers(MainDC);
+	PlatformPresent();
 }
 
 void EnablePaletteMipmap(bool Enable) {

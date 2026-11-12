@@ -1,4 +1,5 @@
 #include "Includes.h"
+#include "MainWindow.h"
 #include <CommCtrl.h>
 #include <fstream>
 #include <iomanip>

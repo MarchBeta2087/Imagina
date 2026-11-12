@@ -12,8 +12,6 @@
 #endif
 
 #define GLEW_STATIC
-#else
-#define GL_GLEXT_PROTOTYPES
 #endif
 #if __has_include(<GL/gl.h>)
 #include <GL/gl.h>
@@ -24,9 +22,15 @@
 #error OpenGL Headers not found
 #endif
 
-#ifdef _WIN32
+// The extension entry points are loaded at run time (GLUtils.cpp), so only the
+// PFN...PROC typedefs are needed here, never the prototypes.
+#if defined(_WIN32)
 #include <glext.h>
 #include <wglext.h>
+#elif __has_include(<GL/glext.h>)
+#include <GL/glext.h>
+#elif __has_include(<OpenGL/glext.h>)
+#include <OpenGL/glext.h>
 #endif
 
 #ifdef GL_TEXTURE_RECTANGLE
@@ -56,16 +60,17 @@
 #include "Evaluator.h"
 #include "HInfLAEvaluator.h"
 #include "JitEvaluator.h"
-#include "MainWindow.h"
 #include "Render.h"
+#include "Platform.h"
+#include "WindowState.h"
 
 inline uint32_t CountLeadingZeros(uint32_t n) {
-#if __has_builtin(__builtin_subcll)
+#if defined(__GNUC__) || defined(__clang__)
 	return __builtin_clz(n);
 #elif defined(_WIN32)
 	return _lzcnt_u32(n);
 #else
-#error
+#error Unsupported compiler
 #endif
 }
 
