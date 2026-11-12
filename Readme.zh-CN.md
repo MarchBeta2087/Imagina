@@ -115,8 +115,11 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 
 注意：
 
-* GNU/Clang 的 Release 使用 `-O2`。`-O3` 构建的计算部分会偶发崩溃（见 issue #6），
-  链接时优化默认关闭（可加 `-DIMAGINA_ENABLE_LTO=ON` 试用）。
+* GNU/Clang 的 Release 使用 `-O2` 和 `-mprefer-vector-width=128`。GCC 16 会把 32 字节
+  的结构体拷贝编译成对 32 字节对齐地址的 256 位写入，而 Windows 上栈只保证 16 字节
+  对齐，于是偶发崩溃（见 issue #6）；把自动向量化限制在 128 位即可避开这些指令，计算
+  部分的 `_mm256_*` 内建函数不受影响。链接时优化默认关闭（可加
+  `-DIMAGINA_ENABLE_LTO=ON` 试用）。
 * `IMAGINA_THREADS=<n>` 限制工作线程数。
 * `IMAGINA_CRASH_REPORT=1` 安装异常处理器，崩溃时打印故障模块偏移与栈回溯（Windows）。
 * SDL 前端支持 `--frames <n>`（跑 n 帧后退出）、`--screenshot <file.bmp>`、

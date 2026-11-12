@@ -88,6 +88,17 @@ function(ImaginaApplyCompilerOptions Target)
 		# GCC and Clang: the same set of options the Visual Studio build uses,
 		# expressed in the GNU dialect (clang-cl is handled by the MSVC branch).
 		target_compile_options(${Target} PRIVATE ${Imagina_ArchFlags} -fno-math-errno)
+
+		# GCC 16 miscompiles 32 byte struct copies into "vmovdqa %ymm,offset(%rsp)"
+		# even though the ABI only guarantees 16 byte stack alignment on Windows
+		# (where -mpreferred-stack-boundary cannot be raised above 4), which
+		# faults with #GP.  That is the intermittent crash of issue #6: keeping
+		# the auto generated vectors at 128 bit avoids those aligned 256 bit
+		# moves; the explicit _mm256_* intrinsics of the computation are not
+		# affected.
+		if(Imagina_ArchFlags)
+			target_compile_options(${Target} PRIVATE -mprefer-vector-width=128)
+		endif()
 	endif()
 
 	if(IMAGINA_ENABLE_LTO)
