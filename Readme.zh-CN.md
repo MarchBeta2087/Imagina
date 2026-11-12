@@ -124,7 +124,7 @@ zlib、glm、`opengl-registry`，以及带 SDL3/OpenGL3 后端的 SDL3 与 Dear 
 manifest 模式会自动获取并构建。
 
 ```
-git clone --depth 1 https://github.com/microsoft/vcpkg C:\vcpkg
+git clone https://github.com/microsoft/vcpkg C:\vcpkg
 C:\vcpkg\bootstrap-vcpkg.bat
 setx VCPKG_ROOT C:\vcpkg
 

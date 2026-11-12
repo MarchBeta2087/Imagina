@@ -92,7 +92,9 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "$env:VCPKG_ROOT/vcpkg.exe")) {
-            git clone --depth 1 https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+            # The manifest uses a builtin-baseline, so the history must contain it:
+            # a shallow clone is not enough.
+            git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
             & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
           }
           "$env:VCPKG_ROOT" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8

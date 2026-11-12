@@ -134,7 +134,7 @@ dependency (GMP, libpng, zlib, glm, `opengl-registry`, SDL3 and Dear ImGui with 
 SDL3/OpenGL3 backends), so a manifest-mode build fetches and builds them.
 
 ```
-git clone --depth 1 https://github.com/microsoft/vcpkg C:\vcpkg
+git clone https://github.com/microsoft/vcpkg C:\vcpkg
 C:\vcpkg\bootstrap-vcpkg.bat
 setx VCPKG_ROOT C:\vcpkg
 
