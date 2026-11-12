@@ -84,9 +84,9 @@ GLuint PaletteImage;
 
 float PaletteSize = 6.0;
 void InitRenderResources() {
-#ifdef _WIN32
 	InitGLExtensions();
-
+#ifdef _WIN32
+	// The SDL front-end sets the swap interval through SDL instead.
 	GL_wglSwapIntervalEXT(1);
 #endif
 	ShaderProgram = LoadShaders(VertexShaderSource, FragmentShaderSource);

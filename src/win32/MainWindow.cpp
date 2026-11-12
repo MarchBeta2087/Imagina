@@ -549,7 +549,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 						try {
 							HRReal HalfH = ParseZoom(ZoomType(ItemIndex), Buffer, 2.0_hr);
 							if (HalfH > 16.0_hr) HalfH = 16.0_hr;
-							uint64_t Precision = -std::min(0ll, HalfH.Exponent) + 64;
+							uint64_t Precision = -std::min<int64_t>(0, HalfH.Exponent) + 64;
 
 							GetDlgItemTextA(hWndDlg, IDC_REAL, Buffer, Length);
 							FContext.CenterCoordinate.X = mpf_class(Buffer, Precision);
@@ -1090,7 +1090,7 @@ INT_PTR FeatureFinderProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 						MessageBoxA(hWndDlg, "Zoom target value out of range.", nullptr, MB_OK | MB_ICONERROR);
 						break;
 					}
-					Precision = -std::min(0ll, TargetRadius.Exponent) + 64;
+					Precision = -std::min<int64_t>(0, TargetRadius.Exponent) + 64;
 
 					Evaluator::FeatureFinder *featureFinder = FContext.evaluator->GetFeatureFinder();
 					newItLim = FContext.Feature->ItLimForZoomLevel(TargetRadius);

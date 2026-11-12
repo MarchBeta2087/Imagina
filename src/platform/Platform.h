@@ -27,11 +27,21 @@ bool PlatformCommitMemory(void *Address, size_t Size);
 void PlatformDecommitMemory(void *Address, size_t Size);
 void PlatformReleaseMemory(void *Address, size_t Size);
 
+// Called on a worker thread around the execution of a cooperative task, so that
+// a task with few threads can pin itself to a pair of cores (Windows).  The
+// returned value is passed back to PlatformEndWorkerTask().
+uintptr_t PlatformBeginWorkerTask(size_t ThreadID, size_t ThreadCount, size_t HardwareConcurrency);
+void PlatformEndWorkerTask(uintptr_t PreviousState);
+
 // File choosers.  Filters are "Description(*.ext)|*.ext" pairs separated by
 // '|', like the Win32 filter string.  Path is UTF-8, FilterIndex is 1 based.
 // Both return false when the dialog was cancelled.
 bool PlatformOpenFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex);
 bool PlatformSaveFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex);
+
+// Physical memory the process may use, for the orbit buffers of the Nova
+// evaluator.
+size_t PlatformAvailableMemory();
 
 // Writable and executable memory for the JIT evaluator.
 void *PlatformAllocateExecutableMemory(size_t Size);

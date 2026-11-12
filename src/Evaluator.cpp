@@ -93,10 +93,7 @@ Task *SimpleEvaluator::CreateEvaluationTask(const EvaluationParameters &paramete
 
 template<FractalTypeEnum FractalType>
 PerturbationEvaluator<FractalType>::PerturbationEvaluator() {
-	MEMORYSTATUSEX statex;
-	statex.dwLength = sizeof(statex);
-	GlobalMemoryStatusEx(&statex);
-	ReserveSize = (statex.ullTotalPhys) & ~(CommitSize - 1);
+	ReserveSize = PlatformAvailableMemory() & ~(CommitSize - 1);
 }
 
 template<FractalTypeEnum FractalType>
@@ -273,10 +270,7 @@ template class PerturbationEvaluator<FractalTypeEnum::BurningShip>;
 template class PerturbationEvaluator<FractalTypeEnum::Tricorn>;
 
 NovaEvaluator::NovaEvaluator() {
-	MEMORYSTATUSEX statex;
-	statex.dwLength = sizeof(statex);
-	GlobalMemoryStatusEx(&statex);
-	ReserveSize = (statex.ullTotalPhys) & ~(CommitSize - 1);
+	ReserveSize = PlatformAvailableMemory() & ~(CommitSize - 1);
 }
 
 Reference *NovaEvaluator::GenerateReference(const EvaluationParameters &parameters) {
@@ -355,7 +349,7 @@ void NovaEvaluator::Evaluate(const EvaluationParameters &parameters, PixelManage
 }
 
 template<typename T>
-__forceinline std::complex<T> operator^(std::complex<T> a, size_t b) {
+IMAGINA_ALWAYS_INLINE std::complex<T> operator^(std::complex<T> a, size_t b) {
 	switch (b) {
 		case 1: return a;
 		case 2: return a * a;

@@ -5,6 +5,7 @@
 #include "RawMapCodec.h"
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 
 #include <zlib.h>
@@ -117,7 +118,7 @@ bool DecodeRow(const uint8_t *Payload, size_t PayloadSize, size_t &Position, uin
 }
 
 bool ReadWholeFile(const std::wstring &Path, std::vector<uint8_t> &Data, std::string &Error) {
-	std::ifstream File(Path.data(), std::ifstream::in | std::ifstream::binary);
+	std::ifstream File(std::filesystem::path(Path), std::ifstream::in | std::ifstream::binary);
 	if (!File) {
 		Error = "cannot open the file";
 		return false;
@@ -257,7 +258,7 @@ bool WriteRawFile(const std::wstring &Path, const std::vector<float> &Values, ui
 		Error = "pixel count does not match the size";
 		return false;
 	}
-	std::ofstream File(Path.data(), std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+	std::ofstream File(std::filesystem::path(Path), std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
 	if (!File) {
 		Error = "cannot write the file";
 		return false;

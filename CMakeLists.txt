@@ -32,6 +32,22 @@ option(BUILD_GUI "Build the Imagina application" ${BUILD_GUI_DEFAULT})
 set(INCLUDE_PATH "include" CACHE PATH "Include path")
 set(LIBRARY_PATH "lib" CACHE PATH "Library path")
 
+# glm is header only and is the only dependency that has to be present for both
+# the application and nothing else, so it is fetched when the include path does
+# not provide it (the distributions package it as libglm-dev otherwise).
+find_path(GLM_INCLUDE_DIR glm/glm.hpp HINTS ${INCLUDE_PATH})
+if(NOT GLM_INCLUDE_DIR)
+	message(STATUS "glm not found, fetching it from GitHub")
+	include(FetchContent)
+	FetchContent_Declare(glm
+		GIT_REPOSITORY https://github.com/g-truc/glm.git
+		GIT_TAG 1.0.1
+		GIT_SHALLOW TRUE)
+	FetchContent_Populate(glm)
+	set(GLM_INCLUDE_DIR "${glm_SOURCE_DIR}")
+endif()
+list(APPEND ImaginaDependencyIncludes "${GLM_INCLUDE_DIR}")
+
 # Library names differ between toolchains (zlibwapi.lib for the Visual Studio
 # build, libz for most GNU/Clang setups), so they can be overridden on the
 # command line: -DZLIB_LIBRARY=z -DMPIR_LIBRARY=mpir ...
@@ -133,6 +149,7 @@ set(ImaginaCoreSources
 	src/RawMapCodec.cpp
 	src/Render.cpp
 	src/platform/PlatformMemory.cpp
+	src/platform/PlatformThread.cpp
 )
 
 if(ENABLE_CUSTOM_FORMULA)
@@ -167,7 +184,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	set_source_files_properties("src/win32/Resource.rc" PROPERTIES LANGUAGE RC)
 	target_compile_definitions(Imagina PRIVATE UNICODE)
 
-	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_include_directories(Imagina SYSTEM PRIVATE "${INCLUDE_PATH}/Debug")
@@ -272,7 +289,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/platform"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/sdl"
 		"${CMAKE_CURRENT_SOURCE_DIR}")
-	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_include_directories(Imagina SYSTEM PRIVATE "${INCLUDE_PATH}/Debug")
@@ -316,7 +333,7 @@ if(BUILD_CODEC_TEST)
 	add_executable (RawMapCodecTest "tests/RawMapCodecTest.cpp" "src/RawMapCodec.cpp")
 	ImaginaApplyCompilerOptions(RawMapCodecTest)
 	target_include_directories(RawMapCodecTest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-	target_include_directories(RawMapCodecTest SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(RawMapCodecTest SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(RawMapCodecTest PRIVATE ${LIBRARY_PATH})
 	target_link_libraries(RawMapCodecTest ${ZLIB_LIBRARY})
 endif()

@@ -14,7 +14,12 @@
 #include <vector>
 
 void *PlatformGetGLProcAddress(const char *Name) {
-	return (void *)wglGetProcAddress(Name);
+	void *Address = (void *)wglGetProcAddress(Name);
+	if (!Address) {
+		static HMODULE OpenGL = LoadLibraryA("opengl32.dll");
+		if (OpenGL) Address = (void *)GetProcAddress(OpenGL, Name);
+	}
+	return Address;
 }
 
 void PlatformPresent() {

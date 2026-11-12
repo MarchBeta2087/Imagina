@@ -26,7 +26,9 @@ PFNGLGETUNIFORMLOCATIONPROC			GL_glGetUniformLocation;
 PFNGLUNIFORM1IPROC					GL_glUniform1i;
 PFNGLUNIFORM1FPROC					GL_glUniform1f;
 
+#ifdef _WIN32
 PFNWGLSWAPINTERVALEXTPROC			GL_wglSwapIntervalEXT;
+#endif
 
 PFNGLGETSHADERINFOLOGPROC			GL_glGetShaderInfoLog;
 PFNGLGETPROGRAMINFOLOGPROC			GL_glGetProgramInfoLog;
@@ -55,7 +57,9 @@ void InitGLExtensions() {
 	GL_glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)PlatformGetGLProcAddress("glGetUniformLocation");
 	GL_glUniform1i = (PFNGLUNIFORM1IPROC)PlatformGetGLProcAddress("glUniform1i");
 	GL_glUniform1f = (PFNGLUNIFORM1FPROC)PlatformGetGLProcAddress("glUniform1f");
+#ifdef _WIN32
 	GL_wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)PlatformGetGLProcAddress("wglSwapIntervalEXT");
+#endif
 	GL_glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)PlatformGetGLProcAddress("glGetShaderInfoLog");
 	GL_glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)PlatformGetGLProcAddress("glGetProgramInfoLog");
 }

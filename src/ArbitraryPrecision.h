@@ -1,8 +1,7 @@
 #ifndef _ARBITRARY_PRECISION_H_
 #define _ARBITRARY_PRECISION_H_
 
-#include <mpir.h>
-#include <mpirxx.h>
+#include "GmpCompat.h"
 
 #ifdef _WIN32
 #include <intrin.h>
