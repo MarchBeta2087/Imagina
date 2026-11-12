@@ -26,7 +26,8 @@ jobs:
             libgmp-dev libpng-dev zlib1g-dev \
             libgl1-mesa-dev libgl1-mesa-dri xvfb \
             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
-            libxfixes-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev
+            libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev
 
       - name: Configure
         run: |
