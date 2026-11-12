@@ -68,29 +68,35 @@ tools/               helper scripts (rawz.py)
 
 | Tier | Platform | What is tested |
 | --- | --- | --- |
-| 1 | Windows x86-64 (MSVC, MinGW-w64) | built by hand, no CI yet (needs the bundled dependencies) |
-| 1 | Linux x86-64 (GCC, Clang) | CI: builds, codec test, headless render under Xvfb with software OpenGL |
+| 1 | Windows x86-64 (MSVC via vcpkg, MinGW-w64) | CI: both front-ends build, codec test, the SDL front-end renders |
+| 1 | Linux x86-64 (GCC, Clang) | CI: build, codec test, headless render under Xvfb with software OpenGL |
 | 2 | macOS (Apple Silicon, Intel) | expected to build, no CI, best effort |
+| 2 | FreeBSD and other BSDs | expected to build (POSIX paths), no CI, untested |
 
-Only x86-64 is supported: the computation uses AVX2 intrinsics.  Tier 2 means the
-build is kept working as far as we can, but a bug there may wait for a contributor
-with the hardware.
+Only x86-64 is supported: the computation uses AVX2 intrinsics, so ARM and 32-bit
+builds are out of scope for now.  Tier 2 means the build is kept working as far as
+we can, but a bug there may wait for a contributor with the hardware.
+
+If you build Imagina on a Tier 2 platform (or any platform that is not in the
+table), please report it in the
+[platform reports discussion](https://github.com/MarchBeta2087/Imagina/discussions) —
+that is how we decide whether a platform can be promoted.
 
 ### Dependencies
 
-| Dependency | Windows (bundled) | Linux | macOS |
+| Dependency | Windows (vcpkg) | Linux | macOS |
 | --- | --- | --- | --- |
-| MPIR (or GMP) | `mpir.lib`/`mpirxx.lib` in `lib\` | `libgmp-dev` (GMP is used automatically) | `brew install gmp` |
-| libpng | `libpng16.lib` | `libpng-dev` | `brew install libpng` |
-| zlib | `zlibwapi.lib` | `zlib1g-dev` | `brew install zlib` (part of libpng) |
-| glm | `glm\` in `include\` | `libglm-dev` | `brew install glm` |
-| glext.h, wglext.h | `include\` | `libgl1-mesa-dev` | OpenGL framework |
-| SDL3, Dear ImGui | fetched | fetched (or `libsdl3-dev`) | fetched |
+| GMP (or MPIR) | `gmp` | `libgmp-dev` | `brew install gmp` |
+| libpng | `libpng` | `libpng-dev` | `brew install libpng` |
+| zlib | `zlib` | `zlib1g-dev` | `brew install zlib` (part of libpng) |
+| glm | `glm` | `libglm-dev` | `brew install glm` |
+| glext.h, wglext.h | `opengl-registry` | `libgl1-mesa-dev` | OpenGL framework |
+| SDL3, Dear ImGui | `sdl3`, `imgui[sdl3-binding,opengl3-binding]` | fetched (or `libsdl3-dev`, `libimgui-dev`) | fetched |
 
 MPIR is a fork of GMP and the sources accept either (`src/GmpCompat.h`).  MPIR is
-not packaged by any distribution, so `MPIR_LIBRARY=auto` (the default) uses GMP
-when MPIR is not there, which is what the Linux and CI builds do.  Both write the
-same `.im` files.
+unmaintained and not packaged anywhere, so the default configuration
+(`MPIR_LIBRARY=auto`) uses GMP; both write the same `.im` files.  A build against
+an existing MPIR installation still works (`-DMPIR_LIBRARY=mpir`).
 
 Anything that can be fetched (glm, SDL3, Dear ImGui) is fetched when it is not
 installed; the tags are pinned in `CMakeLists.txt`
@@ -123,14 +129,36 @@ cmake -S . -B build   -DFETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL   -DFETCHCONTE
 
 ### Windows
 
-Put the dependency headers into `include\` and their libraries into `lib\`, then run
-`build.ps1`; its comments list what is needed and how the dependencies are built.
+The recommended way is [vcpkg](https://vcpkg.io): `vcpkg.json` lists every
+dependency (GMP, libpng, zlib, glm, `opengl-registry`, SDL3 and Dear ImGui with the
+SDL3/OpenGL3 backends), so a manifest-mode build fetches and builds them.
+
+```
+git clone --depth 1 https://github.com/microsoft/vcpkg C:\vcpkg
+C:\vcpkg\bootstrap-vcpkg.bat
+setx VCPKG_ROOT C:\vcpkg
+
+cmake --preset windows-msvc        # Win32 front-end
+cmake --build --preset windows-msvc --parallel
+
+cmake --preset windows-msvc-sdl    # SDL3 + Dear ImGui front-end
+cmake --build --preset windows-msvc-sdl --parallel
+```
+
+`build.ps1` uses the vcpkg toolchain automatically when `VCPKG_ROOT` is set, and
+picks the compiler (-Compiler msvc|gcc|clang|clang-cl|auto):
 
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1                  # MSVC (detected)
 powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
-powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler clang  # LLVM/Clang
+powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # old include\lib\ layout
 ```
+
+Without vcpkg (or with `-NoVcpkg`) the dependencies are taken from `include\` and
+`lib\` next to the script; `build.ps1`'s header lists what is needed and how the
+MPIR/libpng/zlib sources are built.  MinGW-w64 can also use the MSYS2 packages
+(`mingw-w64-ucrt-x86_64-gmp`, `-libpng`, `-zlib`, `-mesa`) — that is what the CI
+job does.
 
 ### Linux, macOS, MSYS2
 

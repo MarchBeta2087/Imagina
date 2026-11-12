@@ -90,11 +90,15 @@ if(MPIR_LIBRARY STREQUAL "auto")
 endif()
 
 # zlib and libpng: the Visual Studio build links zlibwapi.lib and libpng16.lib
-# from the bundled lib/ directory, everywhere else the system packages are used.
-if(WIN32)
+# from the bundled lib/ directory.  Everywhere else (Linux, macOS, MinGW-w64)
+# the packages of the system/MSYS2 are used.
+if(MSVC)
 	set(ZLIB_LIBRARY_DEFAULT "zlibwapi")
 	set(PNG_LIBRARY_DEFAULT "libpng16")
 else()
+	# Let find_package look in INCLUDE_PATH/LIBRARY_PATH as well.
+	list(APPEND CMAKE_INCLUDE_PATH ${INCLUDE_PATH})
+	list(APPEND CMAKE_LIBRARY_PATH ${LIBRARY_PATH})
 	find_package(ZLIB QUIET)
 	find_package(PNG QUIET)
 	if(ZLIB_FOUND)
@@ -298,33 +302,41 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		FetchContent_MakeAvailable(SDL3)
 	endif()
 
-	# Dear ImGui: a checkout can be pointed at with -DIMAGINA_IMGUI_PATH=...,
-	# otherwise it is fetched as well.
-	set(IMAGINA_IMGUI_PATH "" CACHE PATH "Path to a Dear ImGui checkout")
-	if(IMAGINA_IMGUI_PATH)
-		set(ImGuiDir "${IMAGINA_IMGUI_PATH}")
+	# Dear ImGui: an installed package first (vcpkg builds it with the sdl3 and
+	# opengl3 backends), then a checkout pointed at with -DIMAGINA_IMGUI_PATH,
+	# then a fresh fetch.
+	find_package(imgui CONFIG QUIET)
+	if(imgui_FOUND)
+		message(STATUS "using the installed Dear ImGui ${imgui_VERSION}")
+		set(ImaginaImGuiTarget imgui::imgui)
 	else()
-		message(STATUS "Dear ImGui not found, fetching it from GitHub")
-		include(FetchContent)
-		FetchContent_Declare(ImGui
-			GIT_REPOSITORY https://github.com/ocornut/imgui.git
-			GIT_TAG ${IMAGINA_IMGUI_TAG}
-			GIT_SHALLOW TRUE)
-		FetchContent_Populate(ImGui)
-		set(ImGuiDir "${imgui_SOURCE_DIR}")
-	endif()
+		set(IMAGINA_IMGUI_PATH "" CACHE PATH "Path to a Dear ImGui checkout")
+		if(IMAGINA_IMGUI_PATH)
+			set(ImGuiDir "${IMAGINA_IMGUI_PATH}")
+		else()
+			message(STATUS "Dear ImGui not found, fetching ${IMAGINA_IMGUI_TAG} from GitHub")
+			include(FetchContent)
+			FetchContent_Declare(ImGui
+				GIT_REPOSITORY https://github.com/ocornut/imgui.git
+				GIT_TAG ${IMAGINA_IMGUI_TAG}
+				GIT_SHALLOW TRUE)
+			FetchContent_Populate(ImGui)
+			set(ImGuiDir "${imgui_SOURCE_DIR}")
+		endif()
 
-	add_library(ImaginaImGui STATIC
-		"${ImGuiDir}/imgui.cpp"
-		"${ImGuiDir}/imgui_draw.cpp"
-		"${ImGuiDir}/imgui_tables.cpp"
-		"${ImGuiDir}/imgui_widgets.cpp"
-		"${ImGuiDir}/misc/cpp/imgui_stdlib.cpp"
-		"${ImGuiDir}/backends/imgui_impl_sdl3.cpp"
-		"${ImGuiDir}/backends/imgui_impl_opengl3.cpp")
-	target_include_directories(ImaginaImGui PUBLIC "${ImGuiDir}" "${ImGuiDir}/backends" "${ImGuiDir}/misc/cpp")
-	set_property(TARGET ImaginaImGui PROPERTY CXX_STANDARD 17)
-	target_link_libraries(ImaginaImGui PUBLIC SDL3::SDL3)
+		add_library(ImaginaImGui STATIC
+			"${ImGuiDir}/imgui.cpp"
+			"${ImGuiDir}/imgui_draw.cpp"
+			"${ImGuiDir}/imgui_tables.cpp"
+			"${ImGuiDir}/imgui_widgets.cpp"
+			"${ImGuiDir}/misc/cpp/imgui_stdlib.cpp"
+			"${ImGuiDir}/backends/imgui_impl_sdl3.cpp"
+			"${ImGuiDir}/backends/imgui_impl_opengl3.cpp")
+		target_include_directories(ImaginaImGui PUBLIC "${ImGuiDir}" "${ImGuiDir}/backends" "${ImGuiDir}/misc/cpp")
+		set_property(TARGET ImaginaImGui PROPERTY CXX_STANDARD 17)
+		target_link_libraries(ImaginaImGui PUBLIC SDL3::SDL3)
+		set(ImaginaImGuiTarget ImaginaImGui)
+	endif()
 
 	add_executable (Imagina
 		${ImaginaCoreSources}
@@ -349,7 +361,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)

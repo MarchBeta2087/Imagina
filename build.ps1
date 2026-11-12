@@ -12,7 +12,8 @@
 # driver inside the Visual Studio environment.  Additional arguments after the
 # named ones are passed to CMake, e.g. -DENABLE_CUSTOM_FORMULA=ON.
 #
-# Dependencies (not part of the repository) are expected next to this script,
+# Dependencies: with VCPKG_ROOT set, vcpkg provides GMP, libpng, zlib, glm, SDL3
+# and Dear ImGui (see vcpkg.json).  Otherwise they are expected next to this script,
 # where the CMake variables INCLUDE_PATH and LIBRARY_PATH point by default.
 # MSVC needs import libraries (*.lib), GCC and Clang need libraries in their
 # own format, e.g. libmpir.a libmpirxx.a libpng16.a libz.a in lib\ (or a
@@ -50,6 +51,10 @@ param(
 	[switch]$Test,
 	# Build only the parts that do not need the Windows API (the codec test).
 	[switch]$NoGui,
+	# Use the vcpkg toolchain when VCPKG_ROOT is set (the recommended way to get
+	# GMP, libpng, zlib, glm, SDL3 and Dear ImGui on Windows); -NoVcpkg keeps the
+	# old include\/lib\ layout.
+	[switch]$NoVcpkg,
 	# Empty: use ninja when it is on PATH, else the default make generator.
 	[string]$Generator = "",
 	# Empty: locate Visual Studio with vswhere.
@@ -178,6 +183,11 @@ $configureArgs = @(
 	"-DBUILD_CODEC_TEST=$(if ($Test) { 'ON' } else { 'OFF' })",
 	"-DBUILD_GUI=$(if ($NoGui) { 'OFF' } else { 'ON' })"
 )
+
+if (!$NoVcpkg -and $env:VCPKG_ROOT -and (Test-Path (Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"))) {
+	$configureArgs += "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake")"
+	Write-Host "Using vcpkg from $env:VCPKG_ROOT"
+}
 
 if ($cCompiler) { $configureArgs += "-DCMAKE_C_COMPILER=$cCompiler" }
 if ($cxxCompiler) { $configureArgs += "-DCMAKE_CXX_COMPILER=$cxxCompiler" }

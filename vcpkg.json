@@ -1,0 +1,25 @@
+{
+  "name": "imagina",
+  "version-string": "0.1.0",
+  "description": "Fast fractal renderer & explorer",
+  "homepage": "https://github.com/MarchBeta2087/Imagina",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": [
+    "gmp",
+    "libpng",
+    "zlib",
+    "glm",
+    "opengl-registry",
+    {
+      "name": "sdl3",
+      "default-features": false
+    },
+    {
+      "name": "imgui",
+      "features": [
+        "sdl3-binding",
+        "opengl3-binding"
+      ]
+    }
+  ]
+}
