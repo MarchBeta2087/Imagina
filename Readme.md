@@ -138,11 +138,11 @@ git clone --depth 1 https://github.com/microsoft/vcpkg C:\vcpkg
 C:\vcpkg\bootstrap-vcpkg.bat
 setx VCPKG_ROOT C:\vcpkg
 
-cmake --preset windows-msvc        # Win32 front-end (Visual Studio generator)
-cmake --build --preset windows-msvc --config Release --parallel
+cmake --preset windows-msvc        # Win32 front-end (from a VS developer prompt)
+cmake --build --preset windows-msvc --parallel
 
 cmake --preset windows-msvc-sdl    # SDL3 + Dear ImGui front-end
-cmake --build --preset windows-msvc-sdl --config Release --parallel
+cmake --build --preset windows-msvc-sdl --parallel
 ```
 
 `build.ps1` uses the vcpkg toolchain automatically when `VCPKG_ROOT` is set, and

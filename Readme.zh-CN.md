@@ -128,11 +128,11 @@ git clone --depth 1 https://github.com/microsoft/vcpkg C:\vcpkg
 C:\vcpkg\bootstrap-vcpkg.bat
 setx VCPKG_ROOT C:\vcpkg
 
-cmake --preset windows-msvc        # Win32 前端（Visual Studio 生成器）
-cmake --build --preset windows-msvc --config Release --parallel
+cmake --preset windows-msvc        # Win32 前端（在 VS 开发者命令行中运行）
+cmake --build --preset windows-msvc --parallel
 
 cmake --preset windows-msvc-sdl    # SDL3 + Dear ImGui 前端
-cmake --build --preset windows-msvc-sdl --config Release --parallel
+cmake --build --preset windows-msvc-sdl --parallel
 ```
 
 设置了 `VCPKG_ROOT` 时，`build.ps1` 会自动使用 vcpkg 工具链，并自动选择编译器

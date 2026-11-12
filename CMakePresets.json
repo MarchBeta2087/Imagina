@@ -9,15 +9,16 @@
     {
       "name": "windows-msvc",
       "displayName": "Windows x64, MSVC, Win32 front-end (vcpkg)",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/windows-msvc",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "IMAGINA_FRONTEND": "win32",
         "MPIR_USE_DLL": "OFF",
         "BUILD_CODEC_TEST": "ON"
       },
-      "architecture": "x64"
+      "description": "Run this from a Visual Studio developer prompt, or use build.ps1, so that MSVC is on PATH."
     },
     {
       "name": "windows-msvc-sdl",
@@ -25,10 +26,11 @@
       "inherits": "windows-msvc",
       "binaryDir": "${sourceDir}/build/windows-msvc-sdl",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "IMAGINA_FRONTEND": "sdl"
       },
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64"
+      "generator": "Ninja",
+      "description": "Run this from a Visual Studio developer prompt, or use build.ps1, so that MSVC is on PATH."
     },
     {
       "name": "linux",
