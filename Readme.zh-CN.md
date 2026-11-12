@@ -72,7 +72,7 @@ tools/               辅助脚本（rawz.py）
 Tier 2 的意思是「尽力保持可用」，但如果出问题，可能要等到有相应硬件的贡献者来处理。
 
 如果你在 Tier 2 平台（或上表之外的平台）成功构建了 Imagina，欢迎在
-[平台报告 Discussion](https://github.com/MarchBeta2087/Imagina/discussions) 里留言——
+[平台报告 Discussion](https://github.com/MarchBeta2087/Imagina/discussions/14) 里留言——
 我们会据此决定是否提升某个平台的支持层级。
 
 ### 依赖

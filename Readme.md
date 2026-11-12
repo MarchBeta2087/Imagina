@@ -79,7 +79,7 @@ we can, but a bug there may wait for a contributor with the hardware.
 
 If you build Imagina on a Tier 2 platform (or any platform that is not in the
 table), please report it in the
-[platform reports discussion](https://github.com/MarchBeta2087/Imagina/discussions) —
+[platform reports discussion](https://github.com/MarchBeta2087/Imagina/discussions/14) —
 that is how we decide whether a platform can be promoted.
 
 ### Dependencies
