@@ -5,7 +5,11 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <unistd.h>
 #include <sys/mman.h>
+#if __has_include(<sys/sysinfo.h>)
+#include <sys/sysinfo.h>
+#endif
 #endif
 
 void PlatformDebugBreak() {
@@ -52,6 +56,20 @@ void PlatformReleaseMemory(void *Address, size_t Size) {
 	VirtualFree(Address, 0, MEM_RELEASE);
 #else
 	munmap(Address, Size);
+#endif
+}
+
+size_t PlatformAvailableMemory() {
+#ifdef _WIN32
+	MEMORYSTATUSEX Status = {};
+	Status.dwLength = sizeof(Status);
+	GlobalMemoryStatusEx(&Status);
+	return size_t(Status.ullTotalPhys);
+#else
+	long Pages = sysconf(_SC_PHYS_PAGES);
+	long PageSize = sysconf(_SC_PAGE_SIZE);
+	if (Pages > 0 && PageSize > 0) return size_t(Pages) * size_t(PageSize);
+	return size_t(1) << 30;
 #endif
 }
 

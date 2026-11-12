@@ -10,6 +10,9 @@
 #include "File.h"
 
 #include <SDL3/SDL.h>
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 #include <SDL3/SDL_opengl.h>
 
 #include "imgui.h"
@@ -48,8 +51,27 @@ static SDL_Window *Window = nullptr;
 static SDL_GLContext GLContext = nullptr;
 
 // --- platform hooks ---------------------------------------------------------
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 void *PlatformGetGLProcAddress(const char *Name) {
-	return (void *)SDL_GL_GetProcAddress(Name);
+	void *Address = (void *)SDL_GL_GetProcAddress(Name);
+	if (!Address) {
+		// SDL resolves through EGL/GLX, which does not necessarily return the
+		// core entry points; the GL library we link against does.
+#ifdef _WIN32
+		static HMODULE OpenGL = LoadLibraryA("opengl32.dll");
+		if (OpenGL) Address = (void *)GetProcAddress(OpenGL, Name);
+#else
+		Address = dlsym(RTLD_DEFAULT, Name);
+		if (getenv("IMAGINA_GL_DEBUG")) {
+			fprintf(stderr, "gl proc %s: SDL=%p dlsym=%p", Name, (void *)SDL_GL_GetProcAddress(Name), Address);
+			fputc(10, stderr);
+		}
+#endif
+	}
+	return Address;
 }
 
 void PlatformPresent() {

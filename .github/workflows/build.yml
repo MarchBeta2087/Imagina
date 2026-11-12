@@ -1,0 +1,104 @@
+name: build
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+
+jobs:
+  linux:
+    name: Linux (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            ${{ matrix.compiler == 'gcc' && 'g++' || 'clang' }} \
+            libgmp-dev libpng-dev zlib1g-dev \
+            libgl1-mesa-dev libgl1-mesa-dri xvfb \
+            libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
+            libxfixes-dev libxss-dev libxkbcommon-dev libwayland-dev libdecor-0-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIMAGINA_FRONTEND=sdl \
+            -DBUILD_GUI=ON \
+            -DBUILD_CODEC_TEST=ON \
+            -DMPIR_LIBRARY=gmp -DMPIRXX_LIBRARY=gmpxx \
+            -DZLIB_LIBRARY=z -DPNG_LIBRARY=png
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Codec test
+        run: ./build/RawMapCodecTest
+
+      - name: Render a frame (software OpenGL under Xvfb)
+        run: |
+          set -x
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina \
+            --frames 90 --screenshot /tmp/shot.bmp
+          ls -l /tmp/shot.bmp
+
+      - name: Check the screenshot is not an empty canvas
+        run: |
+          python3 - <<'EOF'
+          import struct
+          data = open('/tmp/shot.bmp', 'rb').read()
+          offset = struct.unpack_from('<I', data, 10)[0]
+          width, height = struct.unpack_from('<ii', data, 18)
+          stride = ((width * 4) + 3) // 4 * 4
+          flipped = height > 0
+          rows = abs(height)
+
+          def pixel(x, y):
+              row = rows - 1 - y if flipped else y
+              i = offset + row * stride + x * 4
+              return data[i + 2], data[i + 1], data[i]
+
+          samples = [pixel(x, y) for y in range(40, rows - 2, 23) for x in range(2, width, 23)]
+          colours = len(set(samples))
+          black = sum(1 for c in samples if sum(c) < 24) / len(samples)
+          print(f'{width}x{height}, {colours} distinct colours, {black:.1%} black')
+          # The default view has the Mandelbrot set in the middle: a flat image
+          # means the computation or the texture upload did not work.
+          assert colours > 50, 'the image looks flat'
+          assert black > 0.01, 'the set interior is missing'
+          EOF
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install gmp libpng glm ninja
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIMAGINA_FRONTEND=sdl \
+            -DBUILD_GUI=ON \
+            -DBUILD_CODEC_TEST=ON \
+            -DMPIR_LIBRARY=gmp -DMPIRXX_LIBRARY=gmpxx \
+            -DZLIB_LIBRARY=z -DPNG_LIBRARY=png
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Codec test
+        run: ./build/RawMapCodecTest
+

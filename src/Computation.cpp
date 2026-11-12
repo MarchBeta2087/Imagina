@@ -154,15 +154,9 @@ void Computation::WorkerFunction() {
 
 		ContextLock.unlock();
 
-		DWORD_PTR originalAffinityMask = 0;
-		if (cooperativeTask) { // PLATFORM DEPENDENT
-			if (cooperativeTask->ThreadCount <= HardwareConcurrency / 2) {
-				SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-				DWORD_PTR affinityMask = DWORD_PTR(0b11) << (ThreadID * 2);
-				if (affinityMask) originalAffinityMask = SetThreadAffinityMask(GetCurrentThread(), affinityMask);
-			} else {
-				SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-			}
+		uintptr_t OriginalThreadState = 0;
+		if (cooperativeTask) {
+			OriginalThreadState = PlatformBeginWorkerTask(ThreadID, cooperativeTask->ThreadCount, HardwareConcurrency);
 		}
 
 		if (parallelTask) {
@@ -172,10 +166,7 @@ void Computation::WorkerFunction() {
 		}
 
 		if (cooperativeTask) {
-			if (originalAffinityMask) {
-				SetThreadAffinityMask(GetCurrentThread(), originalAffinityMask);
-			}
-			SetWorkerPriority();
+			PlatformEndWorkerTask(OriginalThreadState);
 		}
 
 		ContextLock.lock();

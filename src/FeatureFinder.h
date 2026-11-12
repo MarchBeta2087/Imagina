@@ -3,7 +3,8 @@
 #include <vector>
 #include <assert.h>
 
-inline void pause() {
+// Named PauseCPU() because POSIX declares pause() in <unistd.h>.
+inline void PauseCPU() {
 	_mm_pause();
 }
 
@@ -46,7 +47,7 @@ public:
 	}
 	size_t WaitWithoutArrive() {
 		size_t value2;
-		while ((value2 = value) > 3) pause();
+		while ((value2 = value) > 3) PauseCPU();
 		return (~value2) & PhaseMask;
 	}
 	size_t Phase() const { return value & PhaseMask; }

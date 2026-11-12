@@ -7,7 +7,7 @@
 #endif
 #include <type_traits>
 #include <bit>
-#include <mpirxx.h>
+#include "GmpCompat.h"
 #include <complex>
 
 struct FExpDouble;

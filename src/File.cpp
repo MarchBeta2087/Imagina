@@ -135,7 +135,7 @@ void LoadImFile(std::istream &File) {
 	FContext.RenderLocation = FContext.CurrentLocation;
 	FContext.EvalLocation = FContext.CurrentLocation;
 
-	uint64_t Precision = -std::min(0ll, FContext.CurrentLocation.HalfH.Exponent) + 64;
+	uint64_t Precision = -std::min<int64_t>(0, FContext.CurrentLocation.HalfH.Exponent) + 64;
 	SetDefaultPrecision(Precision);
 	FContext.CenterCoordinate.X.set_prec(Precision);
 	FContext.CenterCoordinate.Y.set_prec(Precision);
@@ -228,7 +228,7 @@ void LoadImtFile(std::istream &File) {
 			HRReal HalfH = HRReal(mpf_class(Parameters.at("Location.Size"), 52, -16));
 
 			if (HalfH > 16.0_hr) HalfH = 16.0_hr;
-			uint64_t Precision = -std::min(0ll, HalfH.Exponent) + 64;
+			uint64_t Precision = -std::min<int64_t>(0, HalfH.Exponent) + 64;
 
 			Coordinate NewCoordinate{ mpf_class(Parameters.at("Location.Re"), Precision, 16), mpf_class(Parameters.at("Location.Im"), Precision, -16) };
 
@@ -266,7 +266,7 @@ void LoadKfFile(std::istream &File, bool IsKfr) {
 				HRReal HalfH = 2.0_hr / HRReal(mpf_class(Zoom->second, 52));
 
 				if (HalfH > 16.0_hr) HalfH = 16.0_hr;
-				uint64_t Precision = -std::min(0ll, HalfH.Exponent) + 64;
+				uint64_t Precision = -std::min<int64_t>(0, HalfH.Exponent) + 64;
 
 				Coordinate NewCoordinate{ mpf_class(Parameters.at("Re"), Precision), mpf_class(Parameters.at("Im"), Precision) };
 
@@ -357,8 +357,11 @@ void SaveKfrFile(std::ostream &File) {
 	File.precision(NumberOfDigits);
 	File << std::fixed;
 
-	File << "Re: " << (FContext.CenterCoordinate.X + HPReal(FContext.CurrentLocation.X)) << std::endl;
-	File << "Im: " << (FContext.CenterCoordinate.Y + HPReal(FContext.CurrentLocation.Y)) << std::endl;
+	// GMP only streams mpf_class, MPIR also streams the expression types.
+	mpf_class Real = FContext.CenterCoordinate.X + HPReal(FContext.CurrentLocation.X);
+	mpf_class Imaginary = FContext.CenterCoordinate.Y + HPReal(FContext.CurrentLocation.Y);
+	File << "Re: " << Real << std::endl;
+	File << "Im: " << Imaginary << std::endl;
 
 	File.precision(12);
 	File << std::defaultfloat;
@@ -437,8 +440,10 @@ void SaveImtFile(std::ostream &File) {
 	//File << std::hexfloat;
 	File.setf(std::ios_base::hex | std::ios_base::fixed, std::ios_base::basefield | std::ios_base::floatfield);
 	File << "Location:\n";
-	File << "\tRe: " << (FContext.CenterCoordinate.X + HPReal(FContext.CurrentLocation.X)) << std::endl;
-	File << "\tIm: " << (FContext.CenterCoordinate.Y + HPReal(FContext.CurrentLocation.Y)) << std::endl;
+	mpf_class Real = FContext.CenterCoordinate.X + HPReal(FContext.CurrentLocation.X);
+	mpf_class Imaginary = FContext.CenterCoordinate.Y + HPReal(FContext.CurrentLocation.Y);
+	File << "\tRe: " << Real << std::endl;
+	File << "\tIm: " << Imaginary << std::endl;
 
 	File.precision(12);
 	File.unsetf(std::ios_base::floatfield);
