@@ -112,14 +112,17 @@ jobs:
         with:
           arch: x64
 
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
       - name: Configure (Win32 front-end)
-        run: cmake --preset windows-msvc
+        run: cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build (Win32 front-end)
         run: cmake --build --preset windows-msvc --parallel
 
       - name: Configure (SDL front-end)
-        run: cmake --preset windows-msvc-sdl
+        run: cmake --preset windows-msvc-sdl -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build (SDL front-end)
         run: cmake --build --preset windows-msvc-sdl --parallel

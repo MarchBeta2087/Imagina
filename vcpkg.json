@@ -21,5 +21,6 @@
         "opengl3-binding"
       ]
     }
-  ]
+  ],
+  "builtin-baseline": "177e8175121536d414f405ed8b3099b325a42638"
 }
