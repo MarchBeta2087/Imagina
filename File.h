@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <vector>
 
 enum class FileType {
@@ -11,10 +12,10 @@ enum class FileType {
 	Other,
 };
 
-void OpenFile(wchar_t *FileName, size_t ExtensionOffset);
-void SaveFile(wchar_t *FileName, FileType Type);
-void SaveImage(wchar_t *FileName);
-void SaveRawPixelData(wchar_t *FileName);
+void OpenFile(const std::filesystem::path &FileName);
+void SaveFile(const std::filesystem::path &FileName, FileType Type);
+void SaveImage(const std::filesystem::path &FileName);
+void SaveRawPixelData(const std::filesystem::path &FileName);
 
 // Copies the image the pixel manager currently holds, one float per pixel, in
 // the order the raw map files store them (row by row, first row of the buffer

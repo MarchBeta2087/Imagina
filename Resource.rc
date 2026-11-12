@@ -384,7 +384,11 @@ END
 // RT_MANIFEST
 //
 
+// MinGW-w64 always links its own default manifest, which would collide with
+// this one ("multiple non-default manifests"), so the GCC build leaves it out.
+#ifndef IMAGINA_NO_EMBEDDED_MANIFEST
 1                       RT_MANIFEST             "manifest.xml"
+#endif
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

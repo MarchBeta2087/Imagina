@@ -7,6 +7,7 @@
 // OpenGL context, feeds input into FractalContext and draws the UI.
 
 #include "Includes.h"
+#include "File.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
@@ -37,8 +38,9 @@ namespace Global {
 	bool ImageSizeFollowWindowSize = true;
 }
 
-static bool UseDE = true;
-static bool UseLinearApproximation = true;
+bool UseDE = true;
+bool UseLinearApproximation = true;
+
 static bool UsePalleteMipmaps = false;
 static bool Panning = false;
 
@@ -68,6 +70,59 @@ void ErrorMessage(const char *Title, const char *Message) {
 }
 
 namespace {
+
+// --- file dialogs -----------------------------------------------------------
+struct FileDialogResult {
+	bool Done = false;
+	std::string Path;
+	int Filter = -1;
+};
+
+void FileDialogCallback(void *UserData, const char *const *FileList, int Filter) {
+	auto *Result = static_cast<FileDialogResult *>(UserData);
+	Result->Done = true;
+	Result->Filter = Filter;
+	if (FileList && FileList[0]) Result->Path = FileList[0];
+}
+
+// Filters are the Win32 style "Description(*.ext)|*.ext|..." pairs.
+bool ShowFileDialog(bool Save, const char *Filters, std::string &Path, int &FilterIndex) {
+	std::vector<std::string> Parts;
+	std::string Current;
+	for (const char *Character = Filters;; Character++) {
+		if (*Character == '|' || *Character == 0) {
+			Parts.push_back(Current);
+			Current.clear();
+			if (!*Character) break;
+		} else {
+			Current.push_back(*Character);
+		}
+	}
+
+	std::vector<SDL_DialogFileFilter> SdlFilters;
+	SdlFilters.reserve(Parts.size() / 2);
+	for (size_t i = 0; i + 1 < Parts.size(); i += 2) {
+		SdlFilters.push_back({ Parts[i].c_str(), Parts[i + 1].c_str() });
+	}
+
+	FileDialogResult Result;
+	if (Save) {
+		SDL_ShowSaveFileDialog(FileDialogCallback, &Result, Window, SdlFilters.data(), int(SdlFilters.size()), nullptr);
+	} else {
+		SDL_ShowOpenFileDialog(FileDialogCallback, &Result, Window, SdlFilters.data(), int(SdlFilters.size()), nullptr, false);
+	}
+
+	// The callback is invoked while events are being processed.
+	while (!Result.Done) {
+		SDL_PumpEvents();
+		SDL_Delay(10);
+	}
+
+	if (Result.Path.empty()) return false;
+	Path = Result.Path;
+	FilterIndex = Result.Filter >= 0 ? Result.Filter + 1 : 1;
+	return true;
+}
 
 // --- small helpers ----------------------------------------------------------
 std::string Narrow(const std::wstring_view Text) {
@@ -185,21 +240,80 @@ void OpenTransformationDialog() {
 	UI.ShowTransformation = true;
 }
 
+} // namespace
+
+bool PlatformOpenFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex) {
+	(void)Title; // SDL uses the platform's default dialog title
+	return ShowFileDialog(false, Filters, Path, FilterIndex);
+}
+
+bool PlatformSaveFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex) {
+	(void)Title;
+	return ShowFileDialog(true, Filters, Path, FilterIndex);
+}
+
 void SetFractalType(FractalTypeEnum Type) {
 	CurrentFractalType = Type;
-	switch (Type) {
-		case FractalTypeEnum::Mandelbrot:
-			FContext.ChangeFractalType(Type, UseLinearApproximation);
-			break;
-		default:
-			CurrentFractalType = Type;
-			FContext.ChangeFractalType(Type, UseLinearApproximation && Type == FractalTypeEnum::Mandelbrot);
-			break;
-	}
+	FContext.ChangeFractalType(Type, UseLinearApproximation && Type == FractalTypeEnum::Mandelbrot);
 }
+
+namespace {
 
 void ResetLocation() {
 	FContext.ResetLocation();
+}
+
+static const char *OpenFilters =
+	"All supported formats(*.im;*.imt;*.kfr;*.kfp)|*.im;*.imt;*.kfr;*.kfp|"
+	"Imagina(*.im)|*.im|"
+	"Imagina text(*.imt)|*.imt|"
+	"Kalle's fraktaler(*.kfr)|*.kfr|"
+	"Kalle's fraktaler palette(*.kfp)|*.kfp|"
+	"All Files(*.*)|*.*|";
+
+static const char *SaveFilters =
+	"Imagina(*.im)|*.im|"
+	"Imagina text(*.imt)|*.imt|"
+	"Kalle's fraktaler(*.kfr)|*.kfr|";
+
+void OpenFilePrompt() {
+	std::string Path;
+	int FilterIndex = 1;
+	if (!PlatformOpenFileDialog("Open", OpenFilters, Path, FilterIndex)) return;
+	OpenFile(std::filesystem::path(Path));
+}
+
+void SaveFilePrompt() {
+	std::string Path;
+	int FilterIndex = 1;
+	if (!PlatformSaveFileDialog("Save", SaveFilters, Path, FilterIndex)) return;
+
+	std::filesystem::path FileName(Path);
+	if (!FileName.has_extension()) {
+		const char *Extensions[] = { ".im", ".imt", ".kfr" };
+		if (FilterIndex >= 1 && FilterIndex <= 3) FileName += Extensions[FilterIndex - 1];
+	}
+
+	FileType Type = FilterIndex == 2 ? FileType::ImaginaText : FilterIndex == 3 ? FileType::Kfr : FileType::Imagina;
+	SaveFile(FileName, Type);
+}
+
+void SaveImagePrompt(bool Raw) {
+	if (!FContext.pixelManager.Completed()) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Save image", "Please wait for computations to finish.", Window);
+		return;
+	}
+
+	std::string Path;
+	int FilterIndex = 1;
+	const char *Filters = Raw ? "All Files(*.*)|*.*|" : "PNG(*.png)|*.png|All Files(*.*)|*.*|";
+	if (!PlatformSaveFileDialog(Raw ? "Save raw pixel data" : "Save image", Filters, Path, FilterIndex)) return;
+
+	std::filesystem::path FileName(Path);
+	if (!Raw && !FileName.has_extension()) FileName += ".png";
+
+	if (Raw) SaveRawPixelData(FileName);
+	else SaveImage(FileName);
 }
 
 // --- menu bar ---------------------------------------------------------------
@@ -207,9 +321,10 @@ void DrawMenuBar() {
 	if (!ImGui::BeginMainMenuBar()) return;
 
 	if (ImGui::BeginMenu("File")) {
-		ImGui::MenuItem("Open...", "Ctrl+O", false, false);
-		ImGui::MenuItem("Save...", "Ctrl+S", false, false);
-		ImGui::MenuItem("Save image...", "Ctrl+Shift+S", false, false);
+		if (ImGui::MenuItem("Open...", "Ctrl+O")) OpenFilePrompt();
+		if (ImGui::MenuItem("Save...", "Ctrl+S")) SaveFilePrompt();
+		if (ImGui::MenuItem("Save image...", "Ctrl+Shift+S")) SaveImagePrompt(false);
+		if (ImGui::MenuItem("Save raw pixel data...")) SaveImagePrompt(true);
 		ImGui::Separator();
 		if (ImGui::MenuItem("Quit", "Ctrl+Q")) {
 			SDL_Event Quit = {};
@@ -583,9 +698,13 @@ bool HandleEvent(const SDL_Event &Event) {
 		case SDL_EVENT_KEY_DOWN: {
 			if (IO.WantCaptureKeyboard) break;
 			bool Control = (Event.key.mod & SDL_KMOD_CTRL) != 0;
+			bool Shift = (Event.key.mod & SDL_KMOD_SHIFT) != 0;
 			if (Control) {
-				if (Event.key.key == SDLK_S) { /* save: not available in this front-end yet */ }
-				if (Event.key.key == SDLK_O) { /* open: not available in this front-end yet */ }
+				if (Event.key.key == SDLK_O) OpenFilePrompt();
+				if (Event.key.key == SDLK_S) {
+					if (Shift) SaveImagePrompt(false);
+					else SaveFilePrompt();
+				}
 			} else {
 				switch (Event.key.key) {
 					case SDLK_A: Global::ItDiv = std::max(8.0_sr, Global::ItDiv / 2); Global::Redraw = true; break;
@@ -620,9 +739,13 @@ bool HandleEvent(const SDL_Event &Event) {
 int main(int argc, char **argv) {
 	int RunFrames = 0;
 	const char *ScreenshotPath = nullptr;
+	const char *OpenPath = nullptr;
+	const char *SavePath = nullptr;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) RunFrames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) ScreenshotPath = argv[++i];
+		else if (!strcmp(argv[i], "--open") && i + 1 < argc) OpenPath = argv[++i];
+		else if (!strcmp(argv[i], "--save") && i + 1 < argc) SavePath = argv[++i];
 	}
 
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -665,6 +788,8 @@ int main(int argc, char **argv) {
 	FContext.ImageWidth = InitialWindowWidth;
 	FContext.ImageHeight = InitialWindowHeight;
 	Global::Initialized = true;
+
+	if (OpenPath) OpenFile(std::filesystem::path(OpenPath));
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -726,6 +851,20 @@ int main(int argc, char **argv) {
 		SDL_GetWindowSizeInPixels(Window, &PixelWidth, &PixelHeight);
 		glViewport(0, 0, PixelWidth, PixelHeight);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (SavePath && FContext.pixelManager.Completed()) {
+			// The extension decides what to write, which also makes the file
+			// formats testable without a dialog.
+			std::filesystem::path Output(SavePath);
+			std::string Extension = Output.extension().string();
+			for (char &Character : Extension) Character = char(tolower((unsigned char)Character));
+			if (Extension == ".im") SaveFile(Output, FileType::Imagina);
+			else if (Extension == ".imt") SaveFile(Output, FileType::ImaginaText);
+			else if (Extension == ".kfr") SaveFile(Output, FileType::Kfr);
+			else if (Extension == ".raw") SaveRawPixelData(Output);
+			else SaveImage(Output);
+			Running = false;
+		}
 
 		if (ScreenshotPath && RunFrames > 0 && Frame + 1 >= RunFrames) {
 			std::vector<uint8_t> Pixels(size_t(PixelWidth) * PixelHeight * 4);

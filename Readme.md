@@ -78,8 +78,8 @@ There are two front-ends, selected with `-DIMAGINA_FRONTEND=win32|sdl` (the defa
 * `win32` - the original window, menus and dialogs (`MainWindow.cpp`, `Resource.rc`,
   `File.cpp`, `ZoomExport.cpp`). Windows only.
 * `sdl` - SDL3 + Dear ImGui (`sdl/SDLMain.cpp`). Builds on Windows, Linux and macOS
-  and shares the whole computation and rendering core; the `File` menu is still
-  limited to "Quit" until `File.cpp` and `ZoomExport.cpp` are ported.
+  and shares the whole computation and rendering core, including the file formats
+  (`File.cpp`). Zoom sequence export (`ZoomExport.cpp`) is still Win32 only.
 
 SDL3 and Dear ImGui are looked up with `find_package` first and fetched from GitHub
 otherwise; `-DIMAGINA_IMGUI_PATH=<dir>` points at an existing Dear ImGui checkout and
@@ -92,9 +92,12 @@ Notes:
   crashes intermittently (see issue #6) and link time optimisation is off by default
   (`-DIMAGINA_ENABLE_LTO=ON` to try it).
 * `IMAGINA_THREADS=<n>` limits the worker pool.
-* The SDL front-end accepts `--frames <n>` (quit after n frames) and
-  `--screenshot <file.bmp>`, which makes it usable for smoke tests:
+* The SDL front-end accepts `--frames <n>` (quit after n frames),
+  `--screenshot <file.bmp>`, `--open <file>` and `--save <file>`, which makes the
+  file formats and the renderer testable without a dialog:
 
   ```
   ./build/Imagina.exe --frames 90 --screenshot shot.bmp
+  ./build/Imagina.exe --open zoom.imt --save zoom.im     # .im/.imt/.kfr/.raw/.png
+  ./build/Imagina.exe --open zoom.im --frames 90 --screenshot shot.bmp
   ```

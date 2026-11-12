@@ -6,6 +6,11 @@ class FractalContext;
 
 extern FractalTypeEnum CurrentFractalType;
 
+// Front-end state the file loader needs: whether distance estimation is on,
+// and a way to switch the formula (the front-ends keep their menus in sync).
+extern bool UseDE;
+void SetFractalType(FractalTypeEnum Type);
+
 extern FractalContext FContext;
 
 namespace Global {

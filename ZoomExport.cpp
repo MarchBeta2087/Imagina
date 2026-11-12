@@ -17,7 +17,6 @@
 #include <vector>
 #include <chrono>
 #include <cstdio>
-#include <gmp-impl.h>
 
 // ---------------------------------------------------------------------------
 // Zoom sequence export
@@ -266,7 +265,7 @@ bool BuildFrames() {
 // ---------------------------------------------------------------------------
 
 bool WriteRecordFile() {
-	std::ofstream File(Session.RecordPath.data(), std::ofstream::out | std::ofstream::trunc);
+	std::ofstream File(std::filesystem::path(Session.RecordPath), std::ofstream::out | std::ofstream::trunc);
 	if (!File) return false;
 
 	File << "ImaginaZoomExport: 1\n";
@@ -340,7 +339,7 @@ bool WriteRecordFile() {
 // already exported frames are read from the file; frames whose raw file has
 // disappeared are marked as pending again.
 bool ReadRecordFile() {
-	std::ifstream File(Session.RecordPath.data(), std::ifstream::in);
+	std::ifstream File(std::filesystem::path(Session.RecordPath), std::ifstream::in);
 	if (!File) return false;
 
 	try {
@@ -414,7 +413,7 @@ bool ReadRecordFile() {
 		{
 			std::vector<wchar_t> Buffer(LocationPath.begin(), LocationPath.end());
 			Buffer.push_back(0);
-			OpenFile(Buffer.data(), 0);
+			OpenFile(std::filesystem::path(Buffer.data()));
 		}
 
 		HRReal HalfH = FContext.CurrentLocation.HalfH;
@@ -690,7 +689,7 @@ void SaveCurrentFrame() {
 	std::vector<uint8_t> Compressed;
 	RawMapCodec::Compress(Pixels.data(), uint32_t(Width), uint32_t(Height), Compressed);
 	{
-		std::ofstream File(Path.data(), std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+		std::ofstream File(std::filesystem::path(Path), std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
 		File.write(reinterpret_cast<const char *>(Compressed.data()), std::streamsize(Compressed.size()));
 	}
 
@@ -1076,7 +1075,7 @@ bool StartNewExport(HWND hWndDlg) {
 		std::wstring LocationPath = LocationPathOf(Session.RecordPath);
 		std::vector<wchar_t> Buffer(LocationPath.begin(), LocationPath.end());
 		Buffer.push_back(0);
-		SaveFile(Buffer.data(), FileType::Imagina);
+		SaveFile(std::filesystem::path(Buffer.data()), FileType::Imagina);
 	}
 	return true;
 }
@@ -1391,7 +1390,7 @@ void ResumeZoomExport() {
 // ComputeFrameIterations).  Driven by
 // "Imagina.exe --period <record.imz> [<out.txt>]".
 void PrintFrameIterations(const std::wstring &RecordPath, const std::wstring &OutPath) {
-	std::ofstream Out(OutPath, std::ofstream::out | std::ofstream::trunc);
+	std::ofstream Out(std::filesystem::path(OutPath), std::ofstream::out | std::ofstream::trunc);
 	Session.RecordPath = RecordPath;
 	SetRecordPath(RecordPath);
 	if (!ReadRecordFile()) {

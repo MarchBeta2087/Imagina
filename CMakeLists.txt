@@ -186,6 +186,12 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# The .rc file already carries a manifest, and the static MPIR build
 		# produces a duplicate PDB reference warning.
 		target_link_options(Imagina PRIVATE /MANIFEST:NO /IGNORE:4099)
+	else()
+		# wWinMain needs the unicode entry point under MinGW-w64, and the
+		# linker's own default manifest cannot be combined with the one in
+		# Resource.rc.
+		target_link_options(Imagina PRIVATE -municode)
+		set_source_files_properties("Resource.rc" PROPERTIES COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
 endif()
 
@@ -240,6 +246,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	add_executable (Imagina
 		${ImaginaCoreSources}
 		${SourceFilesEncoder}
+		File.cpp
 		sdl/SDLMain.cpp)
 
 	ImaginaApplyCompilerOptions(Imagina)
@@ -256,8 +263,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	# No PNG here: only the Win32 front-end (File.cpp) writes PNG files so far.
-	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${ZLIB_LIBRARY})
+	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)

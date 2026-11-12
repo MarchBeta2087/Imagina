@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 // Platform interface.  Each front-end implements the first group, this
 // repository implements the second group in PlatformMemory.cpp.
@@ -25,6 +26,12 @@ void *PlatformReserveMemory(size_t Size);
 bool PlatformCommitMemory(void *Address, size_t Size);
 void PlatformDecommitMemory(void *Address, size_t Size);
 void PlatformReleaseMemory(void *Address, size_t Size);
+
+// File choosers.  Filters are "Description(*.ext)|*.ext" pairs separated by
+// '|', like the Win32 filter string.  Path is UTF-8, FilterIndex is 1 based.
+// Both return false when the dialog was cancelled.
+bool PlatformOpenFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex);
+bool PlatformSaveFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex);
 
 // Writable and executable memory for the JIT evaluator.
 void *PlatformAllocateExecutableMemory(size_t Size);

@@ -5,12 +5,10 @@
 #include <math.h>
 #include <memory>
 #include <fenv.h>
-#include <gmp-impl.h>
 
+#include "File.h"
 #include "RawMapCodec.h"
 #include "ZoomExport.h"
-
-void OpenFile(wchar_t *FileName, size_t ExtensionOffset = 0);
 
 // Imagina.exe --decode <map.rawz> [<out.raw>]
 // Expands a compressed raw map into the plain layout "Save raw pixel data"
@@ -80,7 +78,7 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 	bool UseGetMessage = false;
 
 	if (argc == 2) {
-		OpenFile(argv[1]);
+		OpenFile(std::filesystem::path(argv[1]));
 	}
 
 	LocalFree(argv);

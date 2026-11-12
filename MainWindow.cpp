@@ -7,7 +7,6 @@
 #include <png.h>
 #include "Resource.h"
 #include "windowsx.h"
-#include "gmp-impl.h"
 
 #include "File.h"
 #include "ZoomExport.h"
@@ -262,97 +261,56 @@ void SetFractalType(FractalTypeEnum Type) {
 	CurrentFractalType = Type;
 }
 
+static const char *OpenFilters =
+	"All supported formats(*.im;*.imt;*.kfr;*.kfp)|*.im;*.imt;*.kfr;*.kfp|"
+	"Imagina(*.im)|*.im|"
+	"Imagina text(*.imt)|*.imt|"
+	"Kalle's fraktaler(*.kfr)|*.kfr|"
+	"Kalle's fraktaler palette(*.kfp)|*.kfp|"
+	"All Files(*.*)|*.*|";
+
+static const char *SaveFilters =
+	"Imagina(*.im)|*.im|"
+	"Imagina text(*.imt)|*.imt|"
+	"Kalle's fraktaler(*.kfr)|*.kfr|";
+
 void OpenLocation() {
-	OPENFILENAMEW OpenFileName;
-	wchar_t FileName[MAX_PATH] = L"";
-
-	OpenFileName.lStructSize = sizeof(OPENFILENAMEW);
-	OpenFileName.hwndOwner = HWnd;
-	OpenFileName.hInstance = nullptr;
-	OpenFileName.lpstrFilter = L""
-		"All supported formats(*.im;*.imt;*.kfr;*.kfp)\0*.im;*.imt;*.kfr;*.kfp\0"
-		"Imagina(*.im)\0*.im\0"
-		"Imagina text(*.imt)\0*.imt\0"
-		"Kalle's fraktaler(*.kfr)\0*.kfr\0"
-		"Kalle's fraktaler palette(*.kfp)\0*.kfp\0"
-		"All Files(*.*)\0*.*\0";
-	OpenFileName.lpstrCustomFilter = nullptr;
-	OpenFileName.nMaxCustFilter = 0;
-	OpenFileName.nFilterIndex = 1;
-	OpenFileName.lpstrFile = FileName;
-	OpenFileName.nMaxFile = sizeof(FileName) / sizeof(wchar_t);
-	OpenFileName.lpstrFileTitle = nullptr;
-	OpenFileName.nMaxFileTitle = 0;
-	OpenFileName.lpstrInitialDir = nullptr;
-	OpenFileName.lpstrTitle = nullptr;
-	OpenFileName.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST;
-	OpenFileName.lpstrDefExt = L"im";
-
-	if (!GetOpenFileNameW(&OpenFileName)) return;
-
-	OpenFile(FileName, OpenFileName.nFileExtension);
+	std::string Path;
+	int FilterIndex = 1;
+	if (!PlatformOpenFileDialog("Open", OpenFilters, Path, FilterIndex)) return;
+	OpenFile(std::filesystem::path(Path));
 }
+
 void SaveLocation() {
 	using enum FileType;
 
-	OPENFILENAMEW OpenFileName;
-	wchar_t FileName[MAX_PATH] = L"";
+	std::string Path;
+	int FilterIndex = 1;
+	if (!PlatformSaveFileDialog("Save", SaveFilters, Path, FilterIndex)) return;
 
-	OpenFileName.lStructSize = sizeof(OPENFILENAMEW);
-	OpenFileName.hwndOwner = HWnd;
-	OpenFileName.hInstance = nullptr;
-	OpenFileName.lpstrFilter = L""
-		"Imagina(*.im)\0*.im\0"
-		"Imagina text(*.imt)\0*.imt\0"
-		"Kalle's fraktaler(*.kfr)\0*.kfr\0";
-	OpenFileName.lpstrCustomFilter = nullptr;
-	OpenFileName.nMaxCustFilter = 0;
-	OpenFileName.nFilterIndex = 1;
-	OpenFileName.lpstrFile = FileName;
-	OpenFileName.nMaxFile = sizeof(FileName) / sizeof(wchar_t);
-	OpenFileName.lpstrFileTitle = nullptr;
-	OpenFileName.nMaxFileTitle = 0;
-	OpenFileName.lpstrInitialDir = nullptr;
-	OpenFileName.lpstrTitle = nullptr;
-	OpenFileName.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
-	OpenFileName.lpstrDefExt = L"im";
-
-	if (!GetSaveFileNameW(&OpenFileName)) return;
-
-	FileType Type;
-	switch (OpenFileName.nFilterIndex) {
-		case 1: Type = Imagina; break;
-		case 2: Type = ImaginaText; break;
-		case 3: Type = Kfr; break;
+	std::filesystem::path FileName(Path);
+	if (!FileName.has_extension()) {
+		const char *Extensions[] = { ".im", ".imt", ".kfr" };
+		if (FilterIndex >= 1 && FilterIndex <= 3) FileName += Extensions[FilterIndex - 1];
 	}
+
+	FileType Type = FilterIndex == 1 ? Imagina : FilterIndex == 2 ? ImaginaText : Kfr;
 	SaveFile(FileName, Type);
 }
+
 void SaveImage(bool raw = false) {
 	if (!FContext.pixelManager.Completed()) {
-		MessageBoxA(nullptr, "Please wait for computations to finish.", "Save image", MB_OK | MB_ICONASTERISK | MB_TASKMODAL);
+		ErrorMessage("Save image", "Please wait for computations to finish.");
 		return;
 	}
 
-	OPENFILENAMEW OpenFileName;
-	wchar_t FileName[MAX_PATH] = L"";
+	std::string Path;
+	int FilterIndex = 1;
+	const char *Filters = raw ? "All Files(*.*)|*.*|" : "PNG(*.png)|*.png|All Files(*.*)|*.*|";
+	if (!PlatformSaveFileDialog(raw ? "Save raw pixel data" : "Save image", Filters, Path, FilterIndex)) return;
 
-	OpenFileName.lStructSize = sizeof(OPENFILENAMEW);
-	OpenFileName.hwndOwner = HWnd;
-	OpenFileName.hInstance = nullptr;
-	OpenFileName.lpstrFilter = raw ? L"All Files(*.*)\0*.*\0" : L"PNG(*.png)\0*.png\0All Files(*.*)\0*.*\0";
-	OpenFileName.lpstrCustomFilter = nullptr;
-	OpenFileName.nMaxCustFilter = 0;
-	OpenFileName.nFilterIndex = 1;
-	OpenFileName.lpstrFile = FileName;
-	OpenFileName.nMaxFile = sizeof(FileName) / sizeof(wchar_t);
-	OpenFileName.lpstrFileTitle = nullptr;
-	OpenFileName.nMaxFileTitle = 0;
-	OpenFileName.lpstrInitialDir = nullptr;
-	OpenFileName.lpstrTitle = nullptr;
-	OpenFileName.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
-	OpenFileName.lpstrDefExt = raw ? L"" : L"png";
-
-	if (!GetSaveFileNameW(&OpenFileName)) return;
+	std::filesystem::path FileName(Path);
+	if (!raw && !FileName.has_extension()) FileName += ".png";
 
 	if (raw) {
 		SaveRawPixelData(FileName);

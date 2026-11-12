@@ -1,11 +1,13 @@
 #include "Includes.h"
-#include "MainWindow.h"
 #include "File.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <png.h>
-#include <gmp-impl.h>
 #include <stack>
+#include <string>
 
 // Temporary file format
 constexpr uint64_t IMMagicNumber = 0x000A0D56504D49FF;
@@ -17,64 +19,82 @@ struct IMFileHeader {
 	uint64_t ReferenceOffset;
 };
 
-extern bool UseDE;
+// The .im file stores GMP integers the way mpz_out_raw() does: a four byte big
+// endian byte count (negated when the value is negative) followed by the
+// magnitude, most significant byte first.  MPIR produces the same layout, so
+// files written by either library can be read.
+static size_t WriteRawInteger(std::ostream &File, mpz_srcptr Value) {
+	// GMP writes no payload at all for zero, so the count is zero as well.
+	size_t Bytes = mpz_sgn(Value) ? size_t((mpz_sizeinbase(Value, 2) + 7) / 8) : 0;
+	int32_t Count = int32_t(Bytes);
+	if (mpz_sgn(Value) < 0) Count = -Count;
 
-size_t mpz_inp_raw_stream(mpz_ptr x, std::istream &fp) {
-	unsigned char  csize_bytes[4];
-	mpir_out_struct out;
+	uint8_t Header[4] = {
+		uint8_t(uint32_t(Count) >> 24), uint8_t(uint32_t(Count) >> 16),
+		uint8_t(uint32_t(Count) >> 8), uint8_t(uint32_t(Count))
+	};
+	File.write((const char *)Header, sizeof(Header));
 
-	/* 4 bytes for size */
-	fp.read((char *)csize_bytes, sizeof(csize_bytes));
-
-	mpz_inp_raw_p(x, csize_bytes, out);
-
-	if (out->writtenSize != 0) {
-		fp.read(out->written, out->writtenSize);
-
-		mpz_inp_raw_m(x, out);
+	std::vector<uint8_t> Magnitude(Bytes, 0);
+	if (Bytes) {
+		size_t Written = 0;
+		mpz_export(Magnitude.data(), &Written, 1, 1, 1, 0, Value);
 	}
-	return out->writtenSize + 4;
-}
-size_t mpz_out_raw_stream(std::ostream &fp, mpz_srcptr x) {
-	mpir_out_struct out;
-
-	mpz_out_raw_m(out, x);
-
-	fp.write(out->written, out->writtenSize);
-
-	void (*gmp_free_func)(void *, size_t);
-
-	mp_get_memory_functions(nullptr, nullptr, &gmp_free_func);
-	(*gmp_free_func) (out->allocated, out->allocatedSize);
-	return out->writtenSize;
-}
-size_t mpf_out_raw_stream(std::ostream &f, mpf_srcptr X) {
-	long int expt; mpz_t Z; int nz;
-	expt = X->_mp_exp;
-	f.write((char *)&expt, sizeof(long int));
-	nz = X->_mp_size;
-	Z->_mp_alloc = std::abs(nz);
-	Z->_mp_size = nz;
-	Z->_mp_d = X->_mp_d;
-	return mpz_out_raw_stream(f, Z) + sizeof(int);
-}
-void mpf_inp_raw_stream(std::istream &f, mpf_ptr X) {
-	long int expt; mpz_t Z;
-	mpz_init(Z);
-	f.read((char *)&expt, sizeof(long int));
-	mpz_inp_raw_stream(Z, f);
-	mpf_set_z(X, Z);
-	X->_mp_exp = expt;
-	mpz_clear(Z);
-}
-int mpf_out_raw_stream(std::ostream &f, const mpf_class &X) {
-	return mpf_out_raw_stream(f, X.get_mpf_t());
-}
-void mpf_inp_raw_stream(std::istream &f, mpf_class &X) {
-	return mpf_inp_raw_stream(f, X.get_mpf_t());
+	File.write((const char *)Magnitude.data(), std::streamsize(Bytes));
+	return Bytes + 4;
 }
 
-FileType DetermineFileType(std::istream &File, std::wstring_view Extension) {
+static size_t ReadRawInteger(std::istream &File, mpz_ptr Value) {
+	uint8_t Header[4] = {};
+	File.read((char *)Header, sizeof(Header));
+	int32_t Count = int32_t(uint32_t(Header[0]) << 24 | uint32_t(Header[1]) << 16 |
+		uint32_t(Header[2]) << 8 | uint32_t(Header[3]));
+
+	bool Negative = Count < 0;
+	size_t Bytes = Negative ? size_t(-int64_t(Count)) : size_t(Count);
+
+	std::vector<uint8_t> Magnitude(Bytes, 0);
+	if (Bytes) File.read((char *)Magnitude.data(), std::streamsize(Bytes));
+	mpz_import(Value, Bytes, 1, 1, 1, 0, Magnitude.data());
+	if (Negative) mpz_neg(Value, Value);
+	return Bytes + 4;
+}
+
+static size_t WriteRawFloat(std::ostream &File, mpf_srcptr Value) {
+	long int Exponent = Value->_mp_exp;
+	File.write((char *)&Exponent, sizeof(Exponent));
+
+	int Size = Value->_mp_size;
+	mpz_t Mantissa;
+	Mantissa->_mp_alloc = std::abs(Size);
+	Mantissa->_mp_size = Size;
+	Mantissa->_mp_d = Value->_mp_d;
+
+	return WriteRawInteger(File, Mantissa) + sizeof(Exponent);
+}
+
+static void ReadRawFloat(std::istream &File, mpf_ptr Value) {
+	long int Exponent = 0;
+	File.read((char *)&Exponent, sizeof(Exponent));
+
+	mpz_t Mantissa;
+	mpz_init(Mantissa);
+	ReadRawInteger(File, Mantissa);
+	mpf_set_z(Value, Mantissa);
+	Value->_mp_exp = Exponent;
+	mpz_clear(Mantissa);
+}
+
+// Lower case extension without the leading dot, used to tell Kalle's
+// fraktaler files apart.
+static std::string FileExtension(const std::filesystem::path &FileName) {
+	std::string Extension = FileName.extension().string();
+	if (!Extension.empty() && Extension[0] == '.') Extension.erase(0, 1);
+	for (char &Character : Extension) Character = char(std::tolower((unsigned char)Character));
+	return Extension;
+}
+
+FileType DetermineFileType(std::istream &File, std::string_view Extension) {
 	using enum FileType;
 	char temp[64];
 	File.seekg(0, std::ios::beg);
@@ -92,8 +112,8 @@ FileType DetermineFileType(std::istream &File, std::wstring_view Extension) {
 	} else {
 		for (char *p = temp; *p; p++) if (*p == ':') Type = ImaginaText;
 		if (Type == ImaginaText) {
-			if (Extension == L"kfp") Type = Kfp;
-			if (Extension == L"kfr") Type = Kfr;
+			if (Extension == "kfp") Type = Kfp;
+			if (Extension == "kfr") Type = Kfr;
 		}
 	}
 
@@ -122,8 +142,8 @@ void LoadImFile(std::istream &File) {
 	FContext.pixelManager.Clear();
 	FContext.ComputePixel = true;
 
-	mpf_inp_raw_stream(File, FContext.CenterCoordinate.X);
-	mpf_inp_raw_stream(File, FContext.CenterCoordinate.Y);
+	ReadRawFloat(File, FContext.CenterCoordinate.X.get_mpf_t());
+	ReadRawFloat(File, FContext.CenterCoordinate.Y.get_mpf_t());
 
 	if (Header.ReferenceOffset) {
 		File.seekg(Header.ReferenceOffset);
@@ -220,7 +240,7 @@ void LoadImtFile(std::istream &File) {
 
 			size_t NewItLim;
 			char Dummy;
-			if (sscanf_s(Parameters.at("Location.Iterations").c_str(), "%zu%c", &NewItLim, &Dummy) == 1) {
+			if (sscanf(Parameters.at("Location.Iterations").c_str(), "%zu%c", &NewItLim, &Dummy) == 1) {
 				Global::ItLim = std::max(UINT64_C(2), std::min(UINT64_C(1) << 32, NewItLim));
 			}
 
@@ -257,7 +277,7 @@ void LoadKfFile(std::istream &File, bool IsKfr) {
 
 				size_t NewItLim;
 				char Dummy;
-				if (sscanf_s(Parameters.at("Iterations").c_str(), "%zu%c", &NewItLim, &Dummy) == 1) {
+				if (sscanf(Parameters.at("Iterations").c_str(), "%zu%c", &NewItLim, &Dummy) == 1) {
 					Global::ItLim = std::max(UINT64_C(2), std::min(UINT64_C(1) << 32, NewItLim));
 				}
 
@@ -275,7 +295,7 @@ void LoadKfFile(std::istream &File, bool IsKfr) {
 		RGBA Color;
 		Color.A = 1.0;
 		Global::Palette.clear();
-		while ((NumberOfArguments = sscanf_s(ColorsString, "%f,%f,%f,%n", &Color.B, &Color.G, &Color.R, &NumberOfCharacters)) == 3) {
+		while ((NumberOfArguments = sscanf(ColorsString, "%f,%f,%f,%n", &Color.B, &Color.G, &Color.R, &NumberOfCharacters)) == 3) {
 			Color.R *= 1.0f / 255.0f;
 			Color.G *= 1.0f / 255.0f;
 			Color.B *= 1.0f / 255.0f;
@@ -290,34 +310,44 @@ void LoadKfFile(std::istream &File, bool IsKfr) {
 	}
 	if (auto IterDiv = Parameters.find("IterDiv"); IterDiv != Parameters.end()) {
 		double ItDiv;
-		sscanf_s(IterDiv->second.c_str(), "%lf", &ItDiv);
+		sscanf(IterDiv->second.c_str(), "%lf", &ItDiv);
 		Global::ItDiv = ItDiv * (UseDE ? 8192.0 : 1024.0);
 	}
 }
 
-void OpenFile(wchar_t *FileName, size_t ExtensionOffset) {
+void OpenFile(const std::filesystem::path &FileName) {
 	using enum FileType;
-	std::ifstream OpenFile(FileName, std::ifstream::in | std::ifstream::binary);
+	std::ifstream Input(FileName, std::ifstream::in | std::ifstream::binary);
+	if (!Input) {
+		ErrorMessage("Cannot open file", FileName.string().c_str());
+		return;
+	}
 
-	FileType Type = DetermineFileType(OpenFile, ExtensionOffset ? FileName + ExtensionOffset : L"");
+	FileType Type = DetermineFileType(Input, FileExtension(FileName));
 
 	if (Type != Imagina) {
-		OpenFile.close();
-		OpenFile.open(FileName, std::ifstream::in);
+		Input.close();
+		Input.open(FileName, std::ifstream::in);
 	}
 
-	switch (Type) {
-		case Imagina:	  LoadImFile(OpenFile);		   break;
-		case ImaginaText: LoadImtFile(OpenFile);	   break;
-		case Kfr:		  LoadKfFile(OpenFile, true);  break;
-		case Kfp:		  LoadKfFile(OpenFile, false); break;
-		default: {
-			MessageBoxW(HWnd, L"File format not recognized.", nullptr, MB_OK | MB_ICONERROR);
-			break;
+	try {
+		switch (Type) {
+			case Imagina:	  LoadImFile(Input);	   break;
+			case ImaginaText: LoadImtFile(Input);	   break;
+			case Kfr:		  LoadKfFile(Input, true);  break;
+			case Kfp:		  LoadKfFile(Input, false); break;
+			default: {
+				ErrorMessage("File format not recognized.");
+				break;
+			}
 		}
+	} catch (const std::exception &Error) {
+		ErrorMessage("Error while loading the file", Error.what());
+	} catch (...) {
+		ErrorMessage("Error while loading the file");
 	}
 
-	OpenFile.close();
+	Input.close();
 }
 
 void SaveKfrFile(std::ostream &File) {
@@ -356,11 +386,13 @@ void SaveImFile(std::ostream &File) {
 
 	File.write((char *)&FContext.CurrentLocation.HalfH, sizeof(HRReal));
 	File.write((char *)&Global::ItLim, sizeof(size_t));
-	mpf_out_raw_stream(File, FContext.CenterCoordinate.X);
-	mpf_out_raw_stream(File, FContext.CenterCoordinate.Y);
+	WriteRawFloat(File, FContext.CenterCoordinate.X.get_mpf_t());
+	WriteRawFloat(File, FContext.CenterCoordinate.Y.get_mpf_t());
 
 	uint64_t ReferenceOffset = File.tellp();
-	if (Global::SaveReference && FContext.evaluator->SaveReference(File, FContext.reference)) { // FIXME
+	// Saving before the reference task finished used to dereference a null
+	// pointer here.
+	if (Global::SaveReference && FContext.reference && FContext.evaluator->SaveReference(File, FContext.reference)) {
 		Header.ReferenceOffset = ReferenceOffset;
 	} else {
 		Header.ReferenceOffset = 0;
@@ -416,49 +448,63 @@ void SaveImtFile(std::ostream &File) {
 	File << "\tIterations: " << Global::ItLim << std::endl;
 }
 
-void SaveFile(wchar_t *FileName, FileType Type) {
+void SaveFile(const std::filesystem::path &FileName, FileType Type) {
 	using enum FileType;
-	switch (Type) {
-		case Imagina: {
-			std::ofstream File(FileName, std::ofstream::out | std::ofstream::binary);
-			SaveImFile(File);
-			File.close();
-			break;
-		}
-		case ImaginaText: {
-			std::ofstream File(FileName, std::ofstream::out);
-			SaveImtFile(File);
-			File.close();
-			break;
-		}
-		case Kfr: {
-			std::ofstream File(FileName, std::ofstream::out);
-			SaveKfrFile(File);
-			File.close();
-			break;
-		}
+	std::ofstream File;
+	bool Binary = Type == Imagina;
+	File.open(FileName, std::ofstream::out | (Binary ? std::ofstream::binary : std::ofstream::openmode(0)));
+	if (!File) {
+		ErrorMessage("Cannot write file", FileName.string().c_str());
+		return;
 	}
+
+	switch (Type) {
+		case Imagina:	  SaveImFile(File);	  break;
+		case ImaginaText: SaveImtFile(File);	  break;
+		case Kfr:		  SaveKfrFile(File);  break;
+		default: break;
+	}
+
+	File.close();
 }
 
-void SaveImage(wchar_t *FileName) {
+static void WritePngData(png_structp Png, png_bytep Data, png_size_t Length) {
+	auto *Stream = static_cast<std::ostream *>(png_get_io_ptr(Png));
+	Stream->write((const char *)Data, std::streamsize(Length));
+}
+
+void SaveImage(const std::filesystem::path &FileName) {
 #ifdef USE_BASIC_PIXEL_MANAGER
-	MessageBoxW(nullptr, L"Unsupported", nullptr, MB_OK | MB_TASKMODAL | MB_ICONERROR);
+	ErrorMessage("Unsupported");
 #else
 	int32_t width = FContext.pixelManager.Width, height = FContext.pixelManager.Height;
 
-	FILE *fp;
-	_wfopen_s(&fp, FileName, L"wb");
-	if (!fp) abort();
+	std::ofstream Output(FileName, std::ofstream::out | std::ofstream::binary);
+	if (!Output) {
+		ErrorMessage("Cannot write image", FileName.string().c_str());
+		return;
+	}
 
 	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-	if (!png) abort();
+	if (!png) {
+		ErrorMessage("Cannot write image", "libpng failed to initialise");
+		return;
+	}
 
 	png_infop info = png_create_info_struct(png);
-	if (!info) abort();
+	if (!info) {
+		png_destroy_write_struct(&png, nullptr);
+		ErrorMessage("Cannot write image", "libpng failed to initialise");
+		return;
+	}
 
-	if (setjmp(png_jmpbuf(png))) abort();
+	if (setjmp(png_jmpbuf(png))) {
+		png_destroy_write_struct(&png, &info);
+		ErrorMessage("Cannot write image", FileName.string().c_str());
+		return;
+	}
 
-	png_init_io(png, fp);
+	png_set_write_fn(png, &Output, WritePngData, nullptr);
 
 	// Output is 8bit depth, RGBA format.
 	png_set_IHDR(
@@ -531,17 +577,21 @@ void SaveImage(wchar_t *FileName) {
 	delete[] row_pointers;
 	delete[] pixData;
 
-	fclose(fp);
+	Output.close();
 
 	png_destroy_write_struct(&png, &info);
 #endif
 }
 
-void SaveRawPixelData(wchar_t *FileName) {
+void SaveRawPixelData(const std::filesystem::path &FileName) {
 #ifdef USE_BASIC_PIXEL_MANAGER
-	MessageBoxW(nullptr, L"Unsupported", nullptr, MB_OK | MB_TASKMODAL | MB_ICONERROR);
+	ErrorMessage("Unsupported");
 #else
 	std::ofstream File(FileName, std::ofstream::out | std::ofstream::binary);
+	if (!File) {
+		ErrorMessage("Cannot write file", FileName.string().c_str());
+		return;
+	}
 
 	int32_t width = FContext.pixelManager.Width, height = FContext.pixelManager.Height;
 
