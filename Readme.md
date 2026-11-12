@@ -64,24 +64,62 @@ tools/               helper scripts (rawz.py)
 
 ## Build
 
+### Supported platforms
+
+| Tier | Platform | What is tested |
+| --- | --- | --- |
+| 1 | Windows x86-64 (MSVC, MinGW-w64) | built by hand, no CI yet (needs the bundled dependencies) |
+| 1 | Linux x86-64 (GCC, Clang) | CI: builds, codec test, headless render under Xvfb with software OpenGL |
+| 2 | macOS (Apple Silicon, Intel) | expected to build, no CI, best effort |
+
+Only x86-64 is supported: the computation uses AVX2 intrinsics.  Tier 2 means the
+build is kept working as far as we can, but a bug there may wait for a contributor
+with the hardware.
+
 ### Dependencies
 
-* mpir
-* libpng
-* zlib (used by libpng)
-* glm
-* glext.h, wglext.h, KHR/khrplatform.h
+| Dependency | Windows (bundled) | Linux | macOS |
+| --- | --- | --- | --- |
+| MPIR (or GMP) | `mpir.lib`/`mpirxx.lib` in `lib\` | `libgmp-dev` (GMP is used automatically) | `brew install gmp` |
+| libpng | `libpng16.lib` | `libpng-dev` | `brew install libpng` |
+| zlib | `zlibwapi.lib` | `zlib1g-dev` | `brew install zlib` (part of libpng) |
+| glm | `glm\` in `include\` | `libglm-dev` | `brew install glm` |
+| glext.h, wglext.h | `include\` | `libgl1-mesa-dev` | OpenGL framework |
+| SDL3, Dear ImGui | fetched | fetched (or `libsdl3-dev`) | fetched |
+
+MPIR is a fork of GMP and the sources accept either (`src/GmpCompat.h`).  MPIR is
+not packaged by any distribution, so `MPIR_LIBRARY=auto` (the default) uses GMP
+when MPIR is not there, which is what the Linux and CI builds do.  Both write the
+same `.im` files.
+
+Anything that can be fetched (glm, SDL3, Dear ImGui) is fetched when it is not
+installed; the tags are pinned in `CMakeLists.txt`
+(`IMAGINA_GLM_TAG`, `IMAGINA_SDL3_TAG`, `IMAGINA_IMGUI_TAG`).
 
 ### CMake variables
 
-* `INCLUDE_PATH` Path to include files.
-* `LIBRARY_PATH` Path to libraries.
-* `MPIR_USE_DLL` Use dll version of MPIR. Default: ON (To use statically linked version, set this to OFF)
-* `ZLIB_LIBRARY`, `PNG_LIBRARY`, `MPIR_LIBRARY`, `MPIRXX_LIBRARY` Library names, for toolchains that use different ones (`zlibwapi`/`z`, import libraries vs. `lib*.a`)
-* `IMAGINA_FRONTEND` `win32` or `sdl`
-* `BUILD_GUI` Build the application (default: ON)
-* `BUILD_CODEC_TEST` Build the raw map codec round trip test
-* `IMAGINA_ENABLE_LTO` Build with link time optimisation (off by default, see below)
+* `IMAGINA_DEPS_DIR` Directory with `include/` and `lib/` holding the bundled
+  dependencies (the Windows build uses this; it sets `INCLUDE_PATH`/`LIBRARY_PATH`).
+* `INCLUDE_PATH`, `LIBRARY_PATH` Where headers and libraries are looked up first.
+* `IMAGINA_FRONTEND` `win32` or `sdl`.
+* `MPIR_USE_DLL` Use the DLL version of MPIR.  Default: ON (static: `OFF`).
+* `MPIR_LIBRARY`, `MPIRXX_LIBRARY` `auto` (default) prefers MPIR, falls back to GMP;
+  can be set to a library name or an absolute path.
+* `ZLIB_LIBRARY`, `PNG_LIBRARY` `auto` by default: `zlibwapi`/`libpng16` on Windows,
+  the system `ZLIB::ZLIB`/`PNG::PNG` elsewhere.
+* `BUILD_GUI` Build the application (default: ON).
+* `BUILD_CODEC_TEST` Build the raw map codec round trip test.
+* `IMAGINA_ENABLE_LTO` Build with link time optimisation (off by default, see below).
+
+### Offline builds
+
+Fetching needs network access the first time.  To build without it, point
+`FetchContent` at existing checkouts (the standard CMake variables) or use
+`IMAGINA_IMGUI_PATH` for Dear ImGui:
+
+```
+cmake -S . -B build   -DFETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL   -DFETCHCONTENT_SOURCE_DIR_IMGUI=/path/to/imgui   -DFETCHCONTENT_SOURCE_DIR_GLM=/path/to/glm
+```
 
 ### Windows
 

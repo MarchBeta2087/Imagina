@@ -10,7 +10,10 @@
 #include <gmp.h>
 #endif
 
-#if __has_include(<mpirxx.h>)
+// MPIR defines __MPIR_VERSION in mpir.h; keying on that (and not on the header
+// name, which a compatibility shim can also provide) decides whether the C++
+// stream operator below is needed.
+#if defined(__MPIR_VERSION) && __has_include(<mpirxx.h>)
 #include <mpirxx.h>
 #else
 #include <gmpxx.h>
