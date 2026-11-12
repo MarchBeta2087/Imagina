@@ -5,7 +5,7 @@
 //   RawMapCodecTest <map.rawz> [raw.raw] decode a file, and compare it with the
 //                                        raw map it was compressed from
 
-#include "../RawMapCodec.h"
+#include "RawMapCodec.h"
 
 #include <cmath>
 #include <cstdint>

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation / 文档
+    url: https://github.com/MarchBeta2087/Imagina#readme
+    about: Build instructions and options are in the Readme (English and 简体中文).

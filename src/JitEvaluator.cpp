@@ -17,8 +17,8 @@
 #undef or
 #undef not
 
-#include "Encoder/Encoder.h"
-#include "Encoder/XMMComplex.h"
+#include "encoder/Encoder.h"
+#include "encoder/XMMComplex.h"
 
 class FormulaCompileError : public std::exception {
 public:
