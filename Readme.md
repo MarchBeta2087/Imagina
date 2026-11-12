@@ -122,8 +122,11 @@ toolchain in use.
 
 Notes:
 
-* GNU/Clang releases are compiled with `-O2`. The `-O3` build of the computation
-  crashes intermittently (see issue #6) and link time optimisation is off by default
+* GNU/Clang releases are compiled with `-O2` and `-mprefer-vector-width=128`.
+  GCC 16 miscompiles 32-byte struct copies into aligned 256-bit moves on a stack
+  that is only 16-byte aligned, which crashed intermittently (issue #6); 128-bit
+  auto-vectorisation avoids those instructions.  The `_mm256_*` intrinsics of the
+  computation are unaffected.  Link time optimisation is off by default
   (`-DIMAGINA_ENABLE_LTO=ON` to try it).
 * `IMAGINA_THREADS=<n>` limits the worker pool.
 * `IMAGINA_CRASH_REPORT=1` installs an exception handler that prints the faulting
