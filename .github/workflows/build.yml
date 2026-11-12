@@ -133,11 +133,9 @@ jobs:
           ./build/windows-msvc/RawMapCodecTest.exe
           ./build/windows-msvc-sdl/RawMapCodecTest.exe
 
-      - name: Run the SDL front-end for a few frames
-        shell: pwsh
-        run: |
-          ./build/windows-msvc-sdl/Imagina.exe --frames 120 --screenshot shot.bmp
-          Get-Item shot.bmp | Select-Object Length
+      # The renderer is checked on Linux with software OpenGL: the hosted Windows
+      # runners only provide the GDI OpenGL 1.1 implementation, which cannot
+      # create the 3.3 core context the front-end asks for.
 
   windows-mingw:
     name: Windows (MinGW-w64)
