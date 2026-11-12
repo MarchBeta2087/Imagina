@@ -84,26 +84,24 @@ jobs:
     name: Windows (MSVC, vcpkg)
     runs-on: windows-latest
     env:
-      VCPKG_ROOT: C:/vcpkg
+      # The image ships a shallow clone at C:/vcpkg, which cannot provide the
+      # builtin-baseline of the manifest, so a full clone goes into the workspace.
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
     steps:
       - uses: actions/checkout@v4
 
       - name: Prepare vcpkg
         shell: pwsh
         run: |
-          if (-not (Test-Path "$env:VCPKG_ROOT/vcpkg.exe")) {
-            # The manifest uses a builtin-baseline, so the history must contain it:
-            # a shallow clone is not enough.
-            git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
-            & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
-          }
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
           "$env:VCPKG_ROOT" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: |
-            C:/vcpkg/installed
+            vcpkg/installed
             build/windows-msvc/vcpkg_installed
             build/windows-msvc-sdl/vcpkg_installed
           key: vcpkg-msvc-${{ hashFiles('vcpkg.json') }}
@@ -118,13 +116,13 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@v5
 
       - name: Configure (Win32 front-end)
-        run: cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+        run: cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build (Win32 front-end)
         run: cmake --build --preset windows-msvc --parallel
 
       - name: Configure (SDL front-end)
-        run: cmake --preset windows-msvc-sdl -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+        run: cmake --preset windows-msvc-sdl -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build (SDL front-end)
         run: cmake --build --preset windows-msvc-sdl --parallel
