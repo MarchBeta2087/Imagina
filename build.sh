@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# Builds Imagina with GCC or Clang on Linux, macOS, the BSDs and (MSYS2 /
+# MinGW-w64) Windows.  build.ps1 is the equivalent for the Visual Studio
+# toolchain.
+#
+#   ./build.sh                       # build, compiler detected
+#   ./build.sh --compiler clang      # force Clang
+#   ./build.sh --compiler gcc        # force GCC
+#   ./build.sh --clean --test        # rebuild all + codec test
+#   ./build.sh -- -DENABLE_CUSTOM_FORMULA=ON
+#
+# Only Windows can build the window application: it uses the Win32 API, wgl and
+# the resource compiler.  On other platforms this script builds the portable
+# parts (currently the raw map codec test) and says so.  On Windows under
+# MSYS2/MinGW-w64 the whole application is built.
+#
+# Dependencies are expected next to this script, in include/ (mpir.h, gmp-impl.h,
+# png.h, zlib.h, glm/, ...) and lib/ (libmpir.a libmpirxx.a libpng16.a libz.a).
+# The names can be overridden, see the CMake variables ZLIB_LIBRARY,
+# PNG_LIBRARY, MPIR_LIBRARY and MPIRXX_LIBRARY.
+set -euo pipefail
+
+usage() {
+	cat <<'EOF'
+Usage: ./build.sh [options] [-- <extra cmake arguments>]
+
+Options:
+  --compiler <auto|gcc|clang>   Compiler to use (default: auto)
+  --config <Debug|Release|RelWithDebInfo|MinSizeRel>
+                                Build type (default: Release)
+  --build-dir <dir>             Build directory (default: build)
+  --generator <name>            CMake generator (default: Ninja if available)
+  --gui                         Require the window application (Windows only)
+  --no-gui                      Skip the window application
+  --test                        Also build the raw map codec test
+  --clean                       Remove the build directory first
+  -j, --jobs <n>                Parallel jobs (default: number of CPUs)
+  -h, --help                    Show this help
+EOF
+}
+
+source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+compiler=auto
+config=Release
+build_dir="$source_dir/build"
+generator=
+want_gui=auto
+want_test=OFF
+clean=0
+jobs=
+extra_args=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--compiler)      compiler=${2:?--compiler needs a value}; shift 2 ;;
+		--compiler=*)    compiler=${1#*=}; shift ;;
+		--config)        config=${2:?--config needs a value}; shift 2 ;;
+		--config=*)      config=${1#*=}; shift ;;
+		--build-dir)     build_dir=${2:?--build-dir needs a value}; shift 2 ;;
+		--build-dir=*)   build_dir=${1#*=}; shift ;;
+		--generator)     generator=${2:?--generator needs a value}; shift 2 ;;
+		--generator=*)   generator=${1#*=}; shift ;;
+		--gui)           want_gui=ON; shift ;;
+		--no-gui)        want_gui=OFF; shift ;;
+		--test)          want_test=ON; shift ;;
+		--clean)         clean=1; shift ;;
+		-j|--jobs)       jobs=${2:?$1 needs a value}; shift 2 ;;
+		-j*)             jobs=${1#-j}; shift ;;
+		-h|--help)       usage; exit 0 ;;
+		--)              shift; extra_args=("$@"); break ;;
+		*)               echo "Unknown option: $1 (see --help)" >&2; exit 2 ;;
+	esac
+done
+
+case "$compiler" in
+	auto|gcc|clang) ;;
+	*) echo "Unsupported compiler '$compiler' (use auto, gcc or clang; for MSVC use build.ps1)." >&2; exit 2 ;;
+esac
+
+find_tool() { command -v "$1" 2>/dev/null || true; }
+
+# MSYS2/Cygwin shells hand out POSIX paths (/c/...), which a native Windows
+# CMake does not understand; cygpath turns them into C:/... .
+to_native() {
+	case "$1" in
+		/*)
+			if command -v cygpath >/dev/null 2>&1; then
+				cygpath -m -- "$1"
+			else
+				printf '%s\n' "$1"
+			fi
+			;;
+		*) printf '%s\n' "$1" ;;
+	esac
+}
+
+# --- platform ---------------------------------------------------------------
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*)
+		on_windows=1
+		# Executables get a .exe suffix, dependencies are import libraries.
+		;;
+	Darwin|Linux|FreeBSD|OpenBSD|NetBSD|DragonFly)
+		on_windows=0
+		;;
+	*)
+		echo "Warning: untested platform '$(uname -s)', trying anyway." >&2
+		on_windows=0
+		;;
+esac
+
+if [ "$want_gui" = auto ]; then
+	if [ "$on_windows" = 1 ]; then want_gui=ON; else want_gui=OFF; fi
+fi
+if [ "$want_gui" = ON ] && [ "$on_windows" = 0 ]; then
+	echo "The Imagina window application uses the Win32 API, wgl and a .rc resource," >&2
+	echo "so it cannot be built on $(uname -s).  Use --no-gui to build the portable" >&2
+	echo "parts (the raw map codec test) instead, with --test." >&2
+	exit 2
+fi
+if [ "$want_gui" = OFF ] && [ "$want_test" = OFF ]; then
+	want_test=ON
+fi
+
+# --- compiler ---------------------------------------------------------------
+if [ "$compiler" = auto ]; then
+	# Respect a configured toolchain, then prefer whatever is installed.
+	if [ -n "${CXX:-}" ]; then
+		compiler=$(basename -- "$CXX")
+		case "$compiler" in
+			clang*) compiler=clang ;;
+			g++*|c++*) compiler=gcc ;;
+			*) echo "Cannot derive the compiler family from CXX='$CXX'; pass --compiler." >&2; exit 2 ;;
+		esac
+	elif [ -n "$(find_tool clang++)" ]; then
+		compiler=clang
+	elif [ -n "$(find_tool g++)" ]; then
+		compiler=gcc
+	else
+		echo "No C++ compiler found: install clang or gcc, or set CC/CXX." >&2
+		exit 2
+	fi
+	echo "Detected compiler: $compiler"
+fi
+
+cc=${CC:-}
+cxx=${CXX:-}
+if [ "$compiler" = clang ]; then
+	cc=${cc:-$(find_tool clang)}
+	cxx=${cxx:-$(find_tool clang++)}
+	[ -n "$cxx" ] || { echo "clang++ was not found on PATH." >&2; exit 2; }
+else
+	cc=${cc:-$(find_tool gcc)}
+	cxx=${cxx:-$(find_tool g++)}
+	[ -n "$cxx" ] || { echo "g++ was not found on PATH." >&2; exit 2; }
+fi
+cc=$(to_native "$cc")
+cxx=$(to_native "$cxx")
+
+# --- generator and jobs -----------------------------------------------------
+if [ -z "$generator" ]; then
+	if [ -n "$(find_tool ninja)" ]; then
+		generator=Ninja
+	elif [ -n "$(find_tool make)" ]; then
+		generator="Unix Makefiles"
+	else
+		echo "Neither Ninja nor make was found on PATH." >&2
+		exit 2
+	fi
+fi
+
+if [ -z "$jobs" ]; then
+	jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+fi
+
+if [ "$clean" = 1 ]; then
+	rm -rf -- "$build_dir"
+fi
+
+build_dir=$(to_native "$build_dir")
+source_dir=$(to_native "$source_dir")
+
+# --- configure and build ----------------------------------------------------
+cmake_args=(
+	-S "$source_dir"
+	-B "$build_dir"
+	-G "$generator"
+	"-DCMAKE_BUILD_TYPE=$config"
+	-DMPIR_USE_DLL=OFF
+	"-DBUILD_CODEC_TEST=$want_test"
+	"-DBUILD_GUI=$want_gui"
+	"-DCMAKE_C_COMPILER=$cc"
+	"-DCMAKE_CXX_COMPILER=$cxx"
+)
+if [ ${#extra_args[@]} -gt 0 ]; then
+	cmake_args+=("${extra_args[@]}")
+fi
+
+cmake "${cmake_args[@]}"
+cmake --build "$build_dir" --config "$config" --parallel "$jobs"
+
+echo
+for exe in Imagina RawMapCodecTest; do
+	path="$build_dir/$exe"
+	if [ "$on_windows" = 1 ]; then path="$path.exe"; fi
+	if [ -x "$path" ]; then echo "Built $path"; fi
+done
+exit 0

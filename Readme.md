@@ -46,6 +46,30 @@ an export would use are listed by `Imagina.exe --period <record.imz>`.
 * INCLUDE_PATH Path to include files.
 * LIBRARY_PATH Path to libraries.
 * MPIR_USE_DLL Use dll version of MPIR. Default: ON (To use statically linked version, set this to OFF)
+* ZLIB_LIBRARY, PNG_LIBRARY, MPIR_LIBRARY, MPIRXX_LIBRARY Library names, for toolchains that use different ones (`zlibwapi`/`z`, import libraries vs. `lib*.a`)
+* BUILD_GUI Build the window application (Windows only, default: ON on Windows)
+* BUILD_CODEC_TEST Build the raw map codec round trip test
 
-On Windows, put the dependency headers into `include\` and their libraries into `lib\`,
-then run `build.ps1`; its comments list what is needed and how the dependencies are built.
+### Windows
+
+Put the dependency headers into `include\` and their libraries into `lib\`, then run
+`build.ps1`; its comments list what is needed and how the dependencies are built.
+
+```
+powershell -ExecutionPolicy Bypass -File build.ps1                  # MSVC (detected)
+powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
+powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler clang  # LLVM/Clang
+```
+
+### Linux, macOS, MSYS2
+
+`build.sh` configures the same CMake project with GCC or Clang:
+
+```
+./build.sh --compiler clang --test
+./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
+```
+
+The window application uses the Win32 API, wgl and a `.rc` resource file, so it can
+only be built on Windows (with MSVC, MinGW-w64 or Clang); elsewhere `build.sh` builds
+the portable parts, currently the raw map codec test.
