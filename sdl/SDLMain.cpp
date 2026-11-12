@@ -445,6 +445,7 @@ void DrawMenuBar() {
 // --- dialog windows ---------------------------------------------------------
 void DrawDialogs() {
 	if (UI.ShowImageSize) {
+		ImGui::SetNextWindowPos(ImVec2(40, 80), ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(320, 0), ImGuiCond_Appearing);
 		if (ImGui::Begin("Image size", &UI.ShowImageSize, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Checkbox("Follow window size", &UI.ImageFollowWindow);
@@ -468,6 +469,7 @@ void DrawDialogs() {
 	}
 
 	if (UI.ShowIterationLimit) {
+		ImGui::SetNextWindowPos(ImVec2(400, 80), ImGuiCond_Appearing);
 		if (ImGui::Begin("Iteration limit", &UI.ShowIterationLimit, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::InputInt("Iterations", &UI.IterationLimit);
 			if (ImGui::Button("Apply", ImVec2(100, 0))) {
@@ -481,6 +483,7 @@ void DrawDialogs() {
 	}
 
 	if (UI.ShowLocation) {
+		ImGui::SetNextWindowPos(ImVec2(40, 270), ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(480, 0), ImGuiCond_Appearing);
 		if (ImGui::Begin("Location", &UI.ShowLocation, ImGuiWindowFlags_AlwaysAutoResize)) {
 			static const char *ZoomTypes[] = { "Height", "Half height", "Magnification", "Depth" };
@@ -535,6 +538,7 @@ void DrawDialogs() {
 	}
 
 	if (UI.ShowTransformation) {
+		ImGui::SetNextWindowPos(ImVec2(560, 270), ImGuiCond_Appearing);
 		if (ImGui::Begin("Transformation", &UI.ShowTransformation, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Checkbox("Flip imaginary axis", &UI.FlipImaginary);
 			ImGui::InputFloat("Rotation", &UI.Rotation);
@@ -581,6 +585,7 @@ void DrawDialogs() {
 	}
 
 	if (UI.ShowTasks) {
+		ImGui::SetNextWindowPos(ImVec2(40, 520), ImGuiCond_Appearing);
 		if (ImGui::Begin("Tasks", &UI.ShowTasks, ImGuiWindowFlags_AlwaysAutoResize)) {
 			SRReal Numerator = 0, Denominator = 1;
 			auto &Manager = FContext.pixelManager;
@@ -612,7 +617,8 @@ void DrawDialogs() {
 	}
 
 	if (UI.ShowAbout) {
-		ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_Appearing);
+		ImGui::SetNextWindowPos(ImVec2(820, 80), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(740, 500), ImGuiCond_Appearing);
 		if (ImGui::Begin("About Imagina", &UI.ShowAbout)) {
 			ImGui::TextUnformatted("Imagina - fast fractal renderer & explorer");
 			ImGui::TextUnformatted("Modified version (2026): zoom sequence export with lossless raw map files.");
@@ -741,11 +747,13 @@ int main(int argc, char **argv) {
 	const char *ScreenshotPath = nullptr;
 	const char *OpenPath = nullptr;
 	const char *SavePath = nullptr;
+	bool ShowAllWindows = false;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) RunFrames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) ScreenshotPath = argv[++i];
 		else if (!strcmp(argv[i], "--open") && i + 1 < argc) OpenPath = argv[++i];
 		else if (!strcmp(argv[i], "--save") && i + 1 < argc) SavePath = argv[++i];
+		else if (!strcmp(argv[i], "--windows")) ShowAllWindows = true;
 	}
 
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -788,6 +796,16 @@ int main(int argc, char **argv) {
 	FContext.ImageWidth = InitialWindowWidth;
 	FContext.ImageHeight = InitialWindowHeight;
 	Global::Initialized = true;
+
+	if (ShowAllWindows) {
+		// Opens every dialog, which lets a --screenshot run cover the UI code.
+		OpenImageSizeDialog();
+		OpenIterationLimitDialog();
+		OpenLocationDialog();
+		OpenTransformationDialog();
+		UI.ShowTasks = true;
+		UI.ShowAbout = true;
+	}
 
 	if (OpenPath) OpenFile(std::filesystem::path(OpenPath));
 
