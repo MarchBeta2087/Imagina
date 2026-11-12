@@ -29,37 +29,87 @@ else()
 endif()
 option(BUILD_GUI "Build the Imagina application" ${BUILD_GUI_DEFAULT})
 
+# ---------------------------------------------------------------------------
+# Dependencies
+#
+# Every dependency is looked up in this order: the bundled directory
+# (IMAGINA_DEPS_DIR/include and lib, which is what the Windows build ships),
+# then the system paths.  Anything that cannot be found and is available as
+# source (glm, SDL3, Dear ImGui) is fetched from GitHub; the tags are pinned
+# below and can be overridden.
+#
+# Offline builds: point FetchContent at existing checkouts with
+#   -DFETCHCONTENT_SOURCE_DIR_SDL3=<dir> -DFETCHCONTENT_SOURCE_DIR_IMGUI=<dir>
+#   -DFETCHCONTENT_SOURCE_DIR_GLM=<dir>
+# or use -DIMAGINA_IMGUI_PATH=<dir> for Dear ImGui.
+# ---------------------------------------------------------------------------
+set(IMAGINA_DEPS_DIR "" CACHE PATH "Directory with include/ and lib/ holding the bundled dependencies")
 set(INCLUDE_PATH "include" CACHE PATH "Include path")
 set(LIBRARY_PATH "lib" CACHE PATH "Library path")
+if(IMAGINA_DEPS_DIR)
+	set(INCLUDE_PATH "${IMAGINA_DEPS_DIR}/include" CACHE PATH "Include path" FORCE)
+	set(LIBRARY_PATH "${IMAGINA_DEPS_DIR}/lib" CACHE PATH "Library path" FORCE)
+endif()
 
-# glm is header only and is the only dependency that has to be present for both
-# the application and nothing else, so it is fetched when the include path does
-# not provide it (the distributions package it as libglm-dev otherwise).
+set(IMAGINA_GLM_TAG "1.0.1" CACHE STRING "glm version to fetch")
+set(IMAGINA_SDL3_TAG "release-3.4.20" CACHE STRING "SDL3 tag to fetch")
+set(IMAGINA_IMGUI_TAG "v1.92.9" CACHE STRING "Dear ImGui tag to fetch")
+
 find_path(GLM_INCLUDE_DIR glm/glm.hpp HINTS ${INCLUDE_PATH})
 if(NOT GLM_INCLUDE_DIR)
-	message(STATUS "glm not found, fetching it from GitHub")
+	message(STATUS "glm not found, fetching ${IMAGINA_GLM_TAG} from GitHub")
 	include(FetchContent)
 	FetchContent_Declare(glm
 		GIT_REPOSITORY https://github.com/g-truc/glm.git
-		GIT_TAG 1.0.1
+		GIT_TAG ${IMAGINA_GLM_TAG}
 		GIT_SHALLOW TRUE)
 	FetchContent_Populate(glm)
 	set(GLM_INCLUDE_DIR "${glm_SOURCE_DIR}")
 endif()
 list(APPEND ImaginaDependencyIncludes "${GLM_INCLUDE_DIR}")
 
-# Library names differ between toolchains (zlibwapi.lib for the Visual Studio
-# build, libz for most GNU/Clang setups), so they can be overridden on the
-# command line: -DZLIB_LIBRARY=z -DMPIR_LIBRARY=mpir ...
+# MPIR is a fork of GMP and the sources use whichever is installed (see
+# src/GmpCompat.h).  Distributions ship GMP; MPIR has to be built from source,
+# which is what the Windows build does.  "auto" prefers MPIR when MPIR_LIBRARY
+# was set explicitly, and GMP otherwise.
+set(MPIR_LIBRARY "auto" CACHE STRING "MPIR library, or 'auto' to use GMP when MPIR is not there")
+set(MPIRXX_LIBRARY "auto" CACHE STRING "MPIR C++ library, or 'auto'")
+if(MPIR_LIBRARY STREQUAL "auto")
+	find_path(IMAGINA_GMP_INCLUDE_DIR gmp.h HINTS ${INCLUDE_PATH})
+	find_library(IMAGINA_GMP_LIBRARY NAMES gmp HINTS ${LIBRARY_PATH})
+	find_library(IMAGINA_GMPXX_LIBRARY NAMES gmpxx HINTS ${LIBRARY_PATH})
+	if(IMAGINA_GMP_INCLUDE_DIR AND IMAGINA_GMP_LIBRARY AND IMAGINA_GMPXX_LIBRARY)
+		message(STATUS "using GMP instead of MPIR: ${IMAGINA_GMP_LIBRARY}")
+		set(MPIR_LIBRARY "${IMAGINA_GMP_LIBRARY}" CACHE STRING "MPIR library" FORCE)
+		set(MPIRXX_LIBRARY "${IMAGINA_GMPXX_LIBRARY}" CACHE STRING "MPIR C++ library" FORCE)
+		list(APPEND ImaginaDependencyIncludes "${IMAGINA_GMP_INCLUDE_DIR}")
+	else()
+		set(MPIR_LIBRARY "mpir" CACHE STRING "MPIR library" FORCE)
+		set(MPIRXX_LIBRARY "mpirxx" CACHE STRING "MPIR C++ library" FORCE)
+	endif()
+endif()
+
+# zlib and libpng: the Visual Studio build links zlibwapi.lib and libpng16.lib
+# from the bundled lib/ directory, everywhere else the system packages are used.
 if(WIN32)
 	set(ZLIB_LIBRARY_DEFAULT "zlibwapi")
+	set(PNG_LIBRARY_DEFAULT "libpng16")
 else()
-	set(ZLIB_LIBRARY_DEFAULT "z")
+	find_package(ZLIB QUIET)
+	find_package(PNG QUIET)
+	if(ZLIB_FOUND)
+		set(ZLIB_LIBRARY_DEFAULT ZLIB::ZLIB)
+	else()
+		set(ZLIB_LIBRARY_DEFAULT "z")
+	endif()
+	if(PNG_FOUND)
+		set(PNG_LIBRARY_DEFAULT PNG::PNG)
+	else()
+		set(PNG_LIBRARY_DEFAULT "png")
+	endif()
 endif()
-set(ZLIB_LIBRARY "${ZLIB_LIBRARY_DEFAULT}" CACHE STRING "Name of the zlib library")
-set(PNG_LIBRARY "libpng16" CACHE STRING "Name of the libpng library")
-set(MPIR_LIBRARY "mpir" CACHE STRING "Name of the MPIR library")
-set(MPIRXX_LIBRARY "mpirxx" CACHE STRING "Name of the MPIR C++ library")
+set(ZLIB_LIBRARY "${ZLIB_LIBRARY_DEFAULT}" CACHE STRING "zlib library")
+set(PNG_LIBRARY "${PNG_LIBRARY_DEFAULT}" CACHE STRING "libpng library")
 
 # The application is written for AVX2, which only exists on x86.
 set(Imagina_ArchFlags "")
@@ -243,7 +293,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 		FetchContent_Declare(SDL3
 			GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-			GIT_TAG release-3.4.20
+			GIT_TAG ${IMAGINA_SDL3_TAG}
 			GIT_SHALLOW TRUE)
 		FetchContent_MakeAvailable(SDL3)
 	endif()
@@ -258,7 +308,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		include(FetchContent)
 		FetchContent_Declare(ImGui
 			GIT_REPOSITORY https://github.com/ocornut/imgui.git
-			GIT_TAG v1.92.9
+			GIT_TAG ${IMAGINA_IMGUI_TAG}
 			GIT_SHALLOW TRUE)
 		FetchContent_Populate(ImGui)
 		set(ImGuiDir "${imgui_SOURCE_DIR}")

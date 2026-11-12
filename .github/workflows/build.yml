@@ -1,3 +1,7 @@
+# Tier 1 platforms are built and tested here: Linux (GCC and Clang, including a
+# headless render check).  macOS is Tier 2: expected to build, but there is no
+# CI.  Windows MSVC needs the bundled dependencies (see issue #5), so the CI
+# does not build it yet.
 name: build
 
 on:
@@ -35,9 +39,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DIMAGINA_FRONTEND=sdl \
             -DBUILD_GUI=ON \
-            -DBUILD_CODEC_TEST=ON \
-            -DMPIR_LIBRARY=gmp -DMPIRXX_LIBRARY=gmpxx \
-            -DZLIB_LIBRARY=z -DPNG_LIBRARY=png
+            -DBUILD_CODEC_TEST=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -77,29 +79,3 @@ jobs:
           assert colours > 50, 'the image looks flat'
           assert black > 0.01, 'the set interior is missing'
           EOF
-
-  macos:
-    name: macOS
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: brew install gmp libpng glm ninja
-
-      - name: Configure
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DIMAGINA_FRONTEND=sdl \
-            -DBUILD_GUI=ON \
-            -DBUILD_CODEC_TEST=ON \
-            -DMPIR_LIBRARY=gmp -DMPIRXX_LIBRARY=gmpxx \
-            -DZLIB_LIBRARY=z -DPNG_LIBRARY=png
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: Codec test
-        run: ./build/RawMapCodecTest
-

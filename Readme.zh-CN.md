@@ -59,24 +59,58 @@ tools/               辅助脚本（rawz.py）
 
 ## 构建
 
+### 支持平台
+
+| 层级 | 平台 | 验证情况 |
+| --- | --- | --- |
+| 1 | Windows x86-64（MSVC、MinGW-w64） | 本地手工构建，暂无 CI（需要随仓库分发的依赖） |
+| 1 | Linux x86-64（GCC、Clang） | CI：构建、编解码测试、Xvfb + 软件 OpenGL 无头渲染 |
+| 2 | macOS（Apple Silicon、Intel） | 期望可以构建，无 CI，尽力而为 |
+
+只支持 x86-64：计算部分使用 AVX2 内建函数。Tier 2 的意思是「尽力保持可用」，
+但如果出问题，可能要等到有相应硬件的贡献者来处理。
+
 ### 依赖
 
-* mpir
-* libpng
-* zlib（libpng 使用）
-* glm
-* glext.h、wglext.h、KHR/khrplatform.h
+| 依赖 | Windows（随仓库分发） | Linux | macOS |
+| --- | --- | --- | --- |
+| MPIR（或 GMP） | `lib\` 中的 `mpir.lib`/`mpirxx.lib` | `libgmp-dev`（会自动改用 GMP） | `brew install gmp` |
+| libpng | `libpng16.lib` | `libpng-dev` | `brew install libpng` |
+| zlib | `zlibwapi.lib` | `zlib1g-dev` | `brew install zlib`（libpng 依赖） |
+| glm | `include\` 中的 `glm\` | `libglm-dev` | `brew install glm` |
+| glext.h、wglext.h | `include\` | `libgl1-mesa-dev` | OpenGL framework |
+| SDL3、Dear ImGui | 自动获取 | 自动获取（或 `libsdl3-dev`） | 自动获取 |
+
+MPIR 是 GMP 的分支，源码两者都支持（`src/GmpCompat.h`）。发行版都不打包 MPIR，
+所以 `MPIR_LIBRARY=auto`（默认）在没有 MPIR 时使用 GMP，Linux 和 CI 就是这样构建的。
+两者写出的 `.im` 文件格式一致。
+
+凡是能以源码获取的依赖（glm、SDL3、Dear ImGui）在找不到时都会自动拉取，版本在
+`CMakeLists.txt` 里固定（`IMAGINA_GLM_TAG`、`IMAGINA_SDL3_TAG`、`IMAGINA_IMGUI_TAG`）。
 
 ### CMake 变量
 
-* `INCLUDE_PATH` 头文件目录
-* `LIBRARY_PATH` 库文件目录
-* `MPIR_USE_DLL` 使用 MPIR 的 DLL 版本。默认 ON（静态链接请设为 OFF）
-* `ZLIB_LIBRARY`、`PNG_LIBRARY`、`MPIR_LIBRARY`、`MPIRXX_LIBRARY` 库名，供使用不同命名的工具链覆盖（`zlibwapi`/`z`、导入库与 `lib*.a`）
-* `IMAGINA_FRONTEND` `win32` 或 `sdl`
-* `BUILD_GUI` 构建应用程序（默认 ON）
-* `BUILD_CODEC_TEST` 构建原始像素图编解码往返测试
-* `IMAGINA_ENABLE_LTO` 启用链接时优化（默认关闭，原因见下）
+* `IMAGINA_DEPS_DIR` 存放随仓库分发依赖的目录，其下的 `include/` 与 `lib/`
+  （Windows 构建使用；会设置 `INCLUDE_PATH`/`LIBRARY_PATH`）。
+* `INCLUDE_PATH`、`LIBRARY_PATH` 优先查找头文件与库的位置。
+* `IMAGINA_FRONTEND` `win32` 或 `sdl`。
+* `MPIR_USE_DLL` 使用 MPIR 的 DLL 版本。默认 ON（静态链接设为 OFF）。
+* `MPIR_LIBRARY`、`MPIRXX_LIBRARY` 默认 `auto`：优先 MPIR，找不到就用 GMP；
+  也可以直接给库名或绝对路径。
+* `ZLIB_LIBRARY`、`PNG_LIBRARY` 默认 `auto`：Windows 上为 `zlibwapi`/`libpng16`，
+  其他平台使用系统的 `ZLIB::ZLIB`/`PNG::PNG`。
+* `BUILD_GUI` 构建应用程序（默认 ON）。
+* `BUILD_CODEC_TEST` 构建原始像素图编解码往返测试。
+* `IMAGINA_ENABLE_LTO` 启用链接时优化（默认关闭，原因见下）。
+
+### 离线构建
+
+首次构建需要联网获取源码。没有网络时，用标准的 FetchContent 变量指向已有的源码目录，
+Dear ImGui 也可以用 `IMAGINA_IMGUI_PATH`：
+
+```
+cmake -S . -B build   -DFETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL   -DFETCHCONTENT_SOURCE_DIR_IMGUI=/path/to/imgui   -DFETCHCONTENT_SOURCE_DIR_GLM=/path/to/glm
+```
 
 ### Windows
 
