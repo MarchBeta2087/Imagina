@@ -103,28 +103,29 @@ function(ImaginaApplyFastMathFlags)
 	else()
 		set(Flags "-fassociative-math" "-ffp-contract=fast")
 	endif()
-	set_source_files_properties(HInfLAEvaluator.cpp PROPERTIES COMPILE_OPTIONS "${Flags}" SKIP_PRECOMPILE_HEADERS ON)
+	set_source_files_properties(src/HInfLAEvaluator.cpp PROPERTIES COMPILE_OPTIONS "${Flags}" SKIP_PRECOMPILE_HEADERS ON)
 endfunction()
 
 # Sources shared by both front-ends: the fractal computation and the OpenGL
 # drawing code.  Everything here is platform independent.
 set(ImaginaCoreSources
-	Computation.cpp
-	Evaluator.cpp
-	FeatureFinder.cpp
-	FractalContext.cpp
-	GLUtils.cpp
-	Global.cpp
-	HInfLAEvaluator.cpp
-	JitEvaluator.cpp
-	PixelManager.cpp
-	PlatformMemory.cpp
-	RawMapCodec.cpp
-	Render.cpp
+	src/Computation.cpp
+	src/Evaluator.cpp
+	src/FeatureFinder.cpp
+	src/File.cpp
+	src/FractalContext.cpp
+	src/GLUtils.cpp
+	src/Global.cpp
+	src/HInfLAEvaluator.cpp
+	src/JitEvaluator.cpp
+	src/PixelManager.cpp
+	src/RawMapCodec.cpp
+	src/Render.cpp
+	src/platform/PlatformMemory.cpp
 )
 
 if(ENABLE_CUSTOM_FORMULA)
-	FILE(GLOB SourceFilesEncoder "Encoder/*.cpp")
+	FILE(GLOB SourceFilesEncoder "src/encoder/*.cpp")
 else()
 	set(SourceFilesEncoder "")
 endif()
@@ -137,18 +138,22 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	add_executable (Imagina WIN32
 		${ImaginaCoreSources}
 		${SourceFilesEncoder}
-		main.cpp
-		MainWindow.cpp
-		File.cpp
-		ZoomExport.cpp
-		PlatformDependent.cpp
-		"Resource.rc")
+		src/win32/main.cpp
+		src/win32/MainWindow.cpp
+		src/win32/ZoomExport.cpp
+		src/win32/PlatformDependent.cpp
+		src/win32/Resource.rc)
 
 	ImaginaApplyCompilerOptions(Imagina)
 	ImaginaApplyFastMathFlags()
 
-	target_precompile_headers (Imagina PRIVATE "Includes.h")
-	set_source_files_properties("Resource.rc" PROPERTIES LANGUAGE RC)
+	target_include_directories(Imagina PRIVATE
+		"${CMAKE_CURRENT_SOURCE_DIR}/src"
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/platform"
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/win32"
+		"${CMAKE_CURRENT_SOURCE_DIR}")
+	target_precompile_headers (Imagina PRIVATE "src/Includes.h")
+	set_source_files_properties("src/win32/Resource.rc" PROPERTIES LANGUAGE RC)
 	target_compile_definitions(Imagina PRIVATE UNICODE)
 
 	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
@@ -191,7 +196,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# linker's own default manifest cannot be combined with the one in
 		# Resource.rc.
 		target_link_options(Imagina PRIVATE -municode)
-		set_source_files_properties("Resource.rc" PROPERTIES COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
+		set_source_files_properties("src/win32/Resource.rc" PROPERTIES COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
 endif()
 
@@ -246,13 +251,16 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	add_executable (Imagina
 		${ImaginaCoreSources}
 		${SourceFilesEncoder}
-		File.cpp
-		sdl/SDLMain.cpp)
+		src/sdl/SDLMain.cpp)
 
 	ImaginaApplyCompilerOptions(Imagina)
 
-	# The front-end lives in sdl/ and includes the shared headers by name.
-	target_include_directories(Imagina PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	# The front-end lives in src/sdl and includes the shared headers by name.
+	target_include_directories(Imagina PRIVATE
+		"${CMAKE_CURRENT_SOURCE_DIR}/src"
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/platform"
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/sdl"
+		"${CMAKE_CURRENT_SOURCE_DIR}")
 	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -294,8 +302,9 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 endif()
 
 if(BUILD_CODEC_TEST)
-	add_executable (RawMapCodecTest "tests/RawMapCodecTest.cpp" "RawMapCodec.cpp")
+	add_executable (RawMapCodecTest "tests/RawMapCodecTest.cpp" "src/RawMapCodec.cpp")
 	ImaginaApplyCompilerOptions(RawMapCodecTest)
+	target_include_directories(RawMapCodecTest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 	target_include_directories(RawMapCodecTest SYSTEM PRIVATE ${INCLUDE_PATH})
 	target_link_directories(RawMapCodecTest PRIVATE ${LIBRARY_PATH})
 	target_link_libraries(RawMapCodecTest ${ZLIB_LIBRARY})
