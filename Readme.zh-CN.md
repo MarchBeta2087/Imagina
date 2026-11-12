@@ -63,27 +63,32 @@ tools/               辅助脚本（rawz.py）
 
 | 层级 | 平台 | 验证情况 |
 | --- | --- | --- |
-| 1 | Windows x86-64（MSVC、MinGW-w64） | 本地手工构建，暂无 CI（需要随仓库分发的依赖） |
+| 1 | Windows x86-64（MSVC + vcpkg、MinGW-w64） | CI：两个前端均构建、编解码测试、SDL 前端实际渲染 |
 | 1 | Linux x86-64（GCC、Clang） | CI：构建、编解码测试、Xvfb + 软件 OpenGL 无头渲染 |
 | 2 | macOS（Apple Silicon、Intel） | 期望可以构建，无 CI，尽力而为 |
+| 2 | FreeBSD 及其他 BSD | 期望可以构建（走 POSIX 代码路径），无 CI，未验证 |
 
-只支持 x86-64：计算部分使用 AVX2 内建函数。Tier 2 的意思是「尽力保持可用」，
-但如果出问题，可能要等到有相应硬件的贡献者来处理。
+只支持 x86-64：计算部分使用 AVX2 内建函数，因此 ARM 与 32 位构建暂时不在范围内。
+Tier 2 的意思是「尽力保持可用」，但如果出问题，可能要等到有相应硬件的贡献者来处理。
+
+如果你在 Tier 2 平台（或上表之外的平台）成功构建了 Imagina，欢迎在
+[平台报告 Discussion](https://github.com/MarchBeta2087/Imagina/discussions/14) 里留言——
+我们会据此决定是否提升某个平台的支持层级。
 
 ### 依赖
 
-| 依赖 | Windows（随仓库分发） | Linux | macOS |
+| 依赖 | Windows（vcpkg） | Linux | macOS |
 | --- | --- | --- | --- |
-| MPIR（或 GMP） | `lib\` 中的 `mpir.lib`/`mpirxx.lib` | `libgmp-dev`（会自动改用 GMP） | `brew install gmp` |
-| libpng | `libpng16.lib` | `libpng-dev` | `brew install libpng` |
-| zlib | `zlibwapi.lib` | `zlib1g-dev` | `brew install zlib`（libpng 依赖） |
-| glm | `include\` 中的 `glm\` | `libglm-dev` | `brew install glm` |
-| glext.h、wglext.h | `include\` | `libgl1-mesa-dev` | OpenGL framework |
-| SDL3、Dear ImGui | 自动获取 | 自动获取（或 `libsdl3-dev`） | 自动获取 |
+| GMP（或 MPIR） | `gmp` | `libgmp-dev`（会自动改用 GMP） | `brew install gmp` |
+| libpng | `libpng` | `libpng-dev` | `brew install libpng` |
+| zlib | `zlib` | `zlib1g-dev` | `brew install zlib`（libpng 依赖） |
+| glm | `glm` | `libglm-dev` | `brew install glm` |
+| glext.h、wglext.h | `opengl-registry` | `libgl1-mesa-dev` | OpenGL framework |
+| SDL3、Dear ImGui | `sdl3`、`imgui[sdl3-binding,opengl3-binding]` | 自动获取（或 `libsdl3-dev`） | 自动获取 |
 
-MPIR 是 GMP 的分支，源码两者都支持（`src/GmpCompat.h`）。发行版都不打包 MPIR，
-所以 `MPIR_LIBRARY=auto`（默认）在没有 MPIR 时使用 GMP，Linux 和 CI 就是这样构建的。
-两者写出的 `.im` 文件格式一致。
+MPIR 是 GMP 的分支，源码两者都支持（`src/GmpCompat.h`）。MPIR 已无维护、也不被任何发行版
+打包，所以默认配置（`MPIR_LIBRARY=auto`）使用 GMP；两者写出的 `.im` 文件格式一致。
+如果本机已装 MPIR，仍可用 `-DMPIR_LIBRARY=mpir` 构建。
 
 凡是能以源码获取的依赖（glm、SDL3、Dear ImGui）在找不到时都会自动拉取，版本在
 `CMakeLists.txt` 里固定（`IMAGINA_GLM_TAG`、`IMAGINA_SDL3_TAG`、`IMAGINA_IMGUI_TAG`）。
@@ -114,14 +119,35 @@ cmake -S . -B build   -DFETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL   -DFETCHCONTE
 
 ### Windows
 
-把依赖头文件放进 `include\`、库文件放进 `lib\`，然后运行 `build.ps1`。脚本开头的注释
-列出了需要哪些文件、依赖如何构建。
+推荐使用 [vcpkg](https://vcpkg.io)：`vcpkg.json` 列出了全部依赖（GMP、libpng、
+zlib、glm、`opengl-registry`，以及带 SDL3/OpenGL3 后端的 SDL3 与 Dear ImGui），
+manifest 模式会自动获取并构建。
+
+```
+git clone https://github.com/microsoft/vcpkg C:\vcpkg
+C:\vcpkg\bootstrap-vcpkg.bat
+setx VCPKG_ROOT C:\vcpkg
+
+cmake --preset windows-msvc        # Win32 前端（在 VS 开发者命令行中运行）
+cmake --build --preset windows-msvc --parallel
+
+cmake --preset windows-msvc-sdl    # SDL3 + Dear ImGui 前端
+cmake --build --preset windows-msvc-sdl --parallel
+```
+
+设置了 `VCPKG_ROOT` 时，`build.ps1` 会自动使用 vcpkg 工具链，并自动选择编译器
+（`-Compiler msvc|gcc|clang|clang-cl|auto`）：
 
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1                  # 自动检测 MSVC
 powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
-powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler clang  # LLVM/Clang
+powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 include\`/`lib\ 布局
 ```
+
+不使用 vcpkg（或加 `-NoVcpkg`）时，依赖从脚本旁边的 `include\` 和 `lib\` 读取；
+`build.ps1` 开头的注释列出了需要哪些文件、MPIR/libpng/zlib 如何构建。MinGW-w64 也可以
+直接使用 MSYS2 的包（`mingw-w64-ucrt-x86_64-gmp`、`-libpng`、`-zlib`、`-mesa`），CI 就是
+这么做的。
 
 ### Linux、macOS、MSYS2
 

@@ -1,7 +1,7 @@
-# Tier 1 platforms are built and tested here: Linux (GCC and Clang, including a
-# headless render check).  macOS is Tier 2: expected to build, but there is no
-# CI.  Windows MSVC needs the bundled dependencies (see issue #5), so the CI
-# does not build it yet.
+# Tier 1 platforms are built here: Linux (GCC and Clang, with a headless render
+# check) and Windows (MSVC with vcpkg, and MinGW-w64).  macOS and the BSDs are
+# Tier 2: expected to build, no CI.  See the platform support section of the
+# Readme.
 name: build
 
 on:
@@ -79,3 +79,103 @@ jobs:
           assert colours > 50, 'the image looks flat'
           assert black > 0.01, 'the set interior is missing'
           EOF
+
+  windows-msvc:
+    name: Windows (MSVC, vcpkg)
+    runs-on: windows-latest
+    env:
+      # The image ships a shallow clone at C:/vcpkg, which cannot provide the
+      # builtin-baseline of the manifest, so a full clone goes into the workspace.
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+          "$env:VCPKG_ROOT" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/installed
+            build/windows-msvc/vcpkg_installed
+            build/windows-msvc-sdl/vcpkg_installed
+          key: vcpkg-msvc-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-msvc-
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Configure (Win32 front-end)
+        run: cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build (Win32 front-end)
+        run: cmake --build --preset windows-msvc --parallel
+
+      - name: Configure (SDL front-end)
+        run: cmake --preset windows-msvc-sdl -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build (SDL front-end)
+        run: cmake --build --preset windows-msvc-sdl --parallel
+
+      - name: Codec test
+        shell: pwsh
+        run: |
+          ./build/windows-msvc/RawMapCodecTest.exe
+          ./build/windows-msvc-sdl/RawMapCodecTest.exe
+
+      # The renderer is checked on Linux with software OpenGL: the hosted Windows
+      # runners only provide the GDI OpenGL 1.1 implementation, which cannot
+      # create the 3.3 core context the front-end asks for.
+
+  windows-mingw:
+    name: Windows (MinGW-w64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gmp
+            mingw-w64-ucrt-x86_64-libpng
+            mingw-w64-ucrt-x86_64-zlib
+            mingw-w64-ucrt-x86_64-mesa
+
+      - name: Configure (SDL front-end)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIMAGINA_FRONTEND=sdl \
+            -DBUILD_CODEC_TEST=ON
+
+      - name: Build (SDL front-end)
+        run: cmake --build build --parallel
+
+      - name: Codec test
+        run: ./build/RawMapCodecTest.exe
+
+      - name: Configure and build the Win32 front-end
+        run: |
+          cmake -S . -B build-win32 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIMAGINA_FRONTEND=win32 \
+            -DMPIR_USE_DLL=OFF
+          cmake --build build-win32 --parallel
