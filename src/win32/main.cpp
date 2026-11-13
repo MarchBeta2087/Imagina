@@ -9,6 +9,7 @@
 #include "File.h"
 #include "RawMapCodec.h"
 #include "ZoomExport.h"
+#include "Language.h"
 
 // Imagina.exe --decode <map.rawz> [<out.raw>]
 // Expands a compressed raw map into the plain layout "Save raw pixel data"
@@ -69,6 +70,27 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 		PrintFrameIterations(Record, Out);
 		LocalFree(argv);
 		return 0;
+	}
+
+	// Imagina.exe --lang en|zh-CN; without it the language follows the system UI
+	// language, the same way the SDL front-end asks SDL for the locale.
+	{
+		bool Given = false;
+		for (int i = 1; i < argc; i++) {
+			if (_wcsicmp(argv[i], L"--lang") != 0 || i + 1 >= argc) continue;
+			char Code[32] = {};
+			WideCharToMultiByte(CP_UTF8, 0, argv[i + 1], -1, Code, int(sizeof Code) - 1, nullptr, nullptr);
+			Language Chosen;
+			if (!LanguageFromCode(Code, Chosen)) {
+				fprintf(stderr, "unknown language '%s' (use en or zh-CN)", Code);
+				fputc(10, stderr);
+				LocalFree(argv);
+				return 2;
+			}
+			SetLanguage(Chosen);
+			Given = true;
+		}
+		if (!Given && PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_CHINESE) SetLanguage(Language::Chinese);
 	}
 
 	CreateMainWindow();

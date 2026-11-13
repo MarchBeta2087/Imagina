@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.16)
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource.  0.x until the SDL front-end reaches parity with the
 # Win32 one (see the Readme, "Versioning").
-project ("Imagina" VERSION 0.2.0 LANGUAGES C CXX)
+project ("Imagina" VERSION 1.0.0 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
@@ -227,6 +227,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		src/win32/main.cpp
 		src/win32/MainWindow.cpp
 		src/win32/ZoomExport.cpp
+		src/win32/Localise.cpp
 		src/win32/PlatformDependent.cpp
 		src/win32/Resource.rc)
 
@@ -396,6 +397,17 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 
 	if(APPLE)
 		set_target_properties(Imagina PROPERTIES MACOSX_BUNDLE TRUE)
+	endif()
+
+	# "cmake --install" produces the layout of the release archive: the executable,
+	# the licence and the Readme it shows, and the CJK font when it has been
+	# fetched into fonts/ (see tools/fetch-fonts.sh).
+	install(TARGETS Imagina RUNTIME DESTINATION .)
+	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
+	install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
+		install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
 	endif()
 endif()
 
