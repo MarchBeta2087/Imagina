@@ -141,7 +141,8 @@ cmake --build --preset windows-msvc-sdl --parallel
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1                  # 自动检测 MSVC
 powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
-powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 include\`/`lib\ 布局
+powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 `include\`/`lib\` 布局
+powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui 前端
 ```
 
 不使用 vcpkg（或加 `-NoVcpkg`）时，依赖从脚本旁边的 `include\` 和 `lib\` 读取；
@@ -155,6 +156,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 inc
 
 ```
 ./build.sh --compiler clang --test
+./build.sh --frontend sdl --compiler clang
 ./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
 ```
 
