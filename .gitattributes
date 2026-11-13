@@ -2,7 +2,6 @@
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
 * text=auto
-
 # Build scripts: the shell scripts must keep their LF endings.
 *.sh text eol=lf
 *.ps1 text eol=crlf
