@@ -10,6 +10,19 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-13
+
+### Fixed / 修复
+
+- A Win32 build without vcpkg failed with `cannot open include file:
+  GL/glext.h`; the Windows SDK does not ship the Khronos headers and the
+  repository does not carry them.  `tools/fetch-headers.ps1`/`.sh` download them
+  into `include/`, and both the preprocessor and the configure step now say so
+  instead of failing on a missing include.
+  不用 vcpkg 的 Win32 构建会因为缺少 `GL/glext.h` 失败（Windows SDK 不含这些 Khronos
+  头文件）。`tools/fetch-headers.ps1`/`.sh` 会把它们下载到 `include/`；预处理器和
+  configure 阶段现在都会给出这个提示，而不是一句缺少头文件。
+
 ## [1.0.0] - 2026-11-13
 
 ### Added / 新增
@@ -124,7 +137,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...dev
+[1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MarchBeta2087/Imagina/releases/tag/v0.1.0
