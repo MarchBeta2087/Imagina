@@ -106,7 +106,7 @@ jobs:
       - name: Render the UI in Chinese
         run: |
           set -x
-          ./tools/fetch-fonts.sh
+          bash tools/fetch-fonts.sh
           ls -l fonts/SarasaMonoSC-Regular.ttf
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina             --lang zh-CN --frames 90 --screenshot /tmp/shot-zh.bmp 2>/tmp/zh.log
           grep -q 'using the font' /tmp/zh.log
