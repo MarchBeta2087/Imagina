@@ -325,7 +325,6 @@ void SaveImage(bool raw = false) {
 // dialog shows all of that together with the licence text, which ships inside
 // the executable as a resource.
 static const wchar_t AboutNotice[] =
-	L"Imagina - fast fractal renderer & explorer\r\n"
 	L"Copyright (C) 2023 Zhuoran and contributors (see the source repository).\r\n"
 	L"\r\n"
 	L"This program is free software: you can redistribute it and/or modify it under the\r\n"
@@ -344,7 +343,11 @@ static const wchar_t AboutNotice[] =
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
-			SetDlgItemTextW(hWndDlg, IDC_ABOUT_TEXT, AboutNotice);
+			// The version is prepended at run time so that the notice does not
+			// have to be spelled out again in CMake.
+			std::wstring VersionLine = L"Imagina " + std::wstring(IMAGINA_VERSION, IMAGINA_VERSION + strlen(IMAGINA_VERSION))
+				+ L" - fast fractal renderer & explorer\r\n";
+			SetDlgItemTextW(hWndDlg, IDC_ABOUT_TEXT, (VersionLine + AboutNotice).c_str());
 
 			HRSRC Resource = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_LICENSE), RT_RCDATA);
 			if (Resource) {

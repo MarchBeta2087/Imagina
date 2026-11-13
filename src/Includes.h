@@ -84,6 +84,7 @@
 #include "JitEvaluator.h"
 #include "Render.h"
 #include "Platform.h"
+#include "Version.h"
 #include "WindowState.h"
 
 inline uint32_t CountLeadingZeros(uint32_t n) {

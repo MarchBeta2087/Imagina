@@ -944,6 +944,11 @@ static int DecodeRawMap(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 	if (argc >= 2 && !strcmp(argv[1], "--decode")) return DecodeRawMap(argc, argv);
+	if (argc >= 2 && (!strcmp(argv[1], "--version") || !strcmp(argv[1], "-v"))) {
+		printf("Imagina %s (SDL front-end)", IMAGINA_VERSION);
+		fputc(10, stdout);
+		return 0;
+	}
 
 	int RunFrames = 0;
 	const char *ScreenshotPath = nullptr;
