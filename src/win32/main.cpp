@@ -64,8 +64,8 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 	// Writes the iterations every key frame of a record would be computed with,
 	// so that the per frame iteration limit can be inspected without exporting.
 	if (argc >= 3 && _wcsicmp(argv[1], L"--period") == 0) {
-		std::wstring Record = argv[2];
-		std::wstring Out = argc >= 4 ? argv[3] : Record + L".period.txt";
+		std::filesystem::path Record(argv[2]);
+		std::filesystem::path Out = argc >= 4 ? std::filesystem::path(argv[3]) : std::filesystem::path(Record.wstring() + L".period.txt");
 		PrintFrameIterations(Record, Out);
 		LocalFree(argv);
 		return 0;

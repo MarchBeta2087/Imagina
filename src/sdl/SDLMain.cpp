@@ -9,6 +9,7 @@
 #include "Includes.h"
 #include "File.h"
 #include "Language.h"
+#include "ZoomExport.h"
 #include "RawMapCodec.h"
 
 #include <SDL3/SDL.h>
@@ -224,45 +225,6 @@ std::string FormatMpf(const mpf_class &Value, int Digits, char Format = 'f') {
 	gmp_sprintf(Buffer.data(), ("%." + std::to_string(Digits) + "F" + Format).c_str(), Value.get_mpf_t());
 	Buffer.resize(Buffer.find('\0'));
 	return Buffer;
-}
-
-enum class ZoomType { Height, HalfHeight, Magnification, Depth };
-
-std::string ZoomToString(ZoomType Type, const HRReal &HalfH, const HRReal &OriginalHalfH) {
-	char Buffer[128];
-	switch (Type) {
-		case ZoomType::Height:
-			gmp_sprintf(Buffer, "%.12Fg", (2.0_hr * HalfH).to_mpf_class(53).get_mpf_t());
-			break;
-		case ZoomType::HalfHeight:
-			gmp_sprintf(Buffer, "%.12Fg", HalfH.to_mpf_class(53).get_mpf_t());
-			break;
-		case ZoomType::Magnification:
-			gmp_sprintf(Buffer, "%.12Fg", (OriginalHalfH / HalfH).to_mpf_class(53).get_mpf_t());
-			break;
-		case ZoomType::Depth:
-			snprintf(Buffer, sizeof(Buffer), "%.15g", (double)log2(OriginalHalfH / HalfH));
-			break;
-	}
-	return Buffer;
-}
-
-HRReal ParseZoom(ZoomType Type, const std::string &Text, const HRReal &OriginalHalfH) {
-	HRReal Zoom = mpf_class(Text.data(), 52);
-	switch (Type) {
-		case ZoomType::Height:
-			Zoom *= 0.5;
-			break;
-		case ZoomType::HalfHeight:
-			break;
-		case ZoomType::Magnification:
-			Zoom = OriginalHalfH / Zoom;
-			break;
-		case ZoomType::Depth:
-			Zoom = OriginalHalfH / pow2(SRReal(Zoom));
-			break;
-	}
-	return Zoom;
 }
 
 // --- dialogs ----------------------------------------------------------------
@@ -942,8 +904,27 @@ static int DecodeRawMap(int argc, char **argv) {
 	return 0;
 }
 
+// Imagina --period <record.imz> [<out.txt>]
+// Writes the iteration limit every key frame of an export record would be
+// computed with, which is the same command the Win32 front-end has.
+static int PrintPeriod(int argc, char **argv) {
+	if (argc < 3) {
+		fprintf(stderr, "usage: Imagina --period <record.imz> [<out.txt>]");
+		fputc(10, stderr);
+		return 1;
+	}
+	std::filesystem::path Record(argv[2]);
+	std::filesystem::path Out = argc >= 4 ? std::filesystem::path(argv[3]) : Record;
+	if (argc < 4) Out += ".period.txt";
+	PrintFrameIterations(Record, Out);
+	fprintf(stderr, "%s: iteration limits written to %s", Record.string().c_str(), Out.string().c_str());
+	fputc(10, stderr);
+	return 0;
+}
+
 int main(int argc, char **argv) {
 	if (argc >= 2 && !strcmp(argv[1], "--decode")) return DecodeRawMap(argc, argv);
+	if (argc >= 2 && !strcmp(argv[1], "--period")) return PrintPeriod(argc, argv);
 	if (argc >= 2 && (!strcmp(argv[1], "--version") || !strcmp(argv[1], "-v"))) {
 		printf("Imagina %s (SDL front-end)", IMAGINA_VERSION);
 		fputc(10, stdout);

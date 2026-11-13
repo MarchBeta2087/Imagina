@@ -205,6 +205,7 @@ set(ImaginaCoreSources
 	src/PixelManager.cpp
 	src/RawMapCodec.cpp
 	src/Render.cpp
+	src/ZoomExport.cpp
 	src/platform/PlatformMemory.cpp
 	src/platform/PlatformThread.cpp
 )
