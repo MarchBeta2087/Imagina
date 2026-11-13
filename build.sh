@@ -9,10 +9,9 @@
 #   ./build.sh --clean --test        # rebuild all + codec test
 #   ./build.sh -- -DENABLE_CUSTOM_FORMULA=ON
 #
-# Only Windows can build the window application: it uses the Win32 API, wgl and
-# the resource compiler.  On other platforms this script builds the portable
-# parts (currently the raw map codec test) and says so.  On Windows under
-# MSYS2/MinGW-w64 the whole application is built.
+# The window application is built on every platform: Windows uses the Win32
+# front-end by default, everything else the SDL3 + Dear ImGui one.  --no-gui
+# builds only the portable parts (the raw map codec test).
 #
 # Dependencies are expected next to this script, in include/ (mpir.h, gmp-impl.h,
 # png.h, zlib.h, glm/, ...) and lib/ (libmpir.a libmpirxx.a libpng16.a libz.a).
@@ -31,7 +30,7 @@ Options:
   --build-dir <dir>             Build directory (default: build)
   --generator <name>            CMake generator (default: Ninja if available)
   --frontend <win32|sdl>        Window toolkit (default: win32 on Windows, sdl elsewhere)
-  --gui                         Require the window application (Windows only)
+  --gui                         Require the window application (the default)
   --no-gui                      Skip the window application
   --test                        Also build the raw map codec test
   --clean                       Remove the build directory first
@@ -131,7 +130,7 @@ elif [ "$on_windows" = 0 ]; then
 fi
 
 if [ "$want_gui" = auto ]; then
-	if [ "$on_windows" = 1 ]; then want_gui=ON; else want_gui=OFF; fi
+	want_gui=ON
 fi
 if [ "$want_gui" = ON ] && [ "$frontend" = win32 ] && [ "$on_windows" = 0 ]; then
 	echo "The Win32 front-end uses the Win32 API, wgl and a .rc resource, so it cannot" >&2

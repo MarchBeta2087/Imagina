@@ -540,12 +540,6 @@ void DrawMenuBar() {
 	}
 
 	if (ImGui::BeginMenu(Tr("Help"))) {
-		if (ImGui::BeginMenu(Tr("Language"))) {
-			if (ImGui::MenuItem(Tr("English"), nullptr, CurrentLanguage() == Language::English)) SetLanguage(Language::English);
-			if (ImGui::MenuItem(Tr("Chinese (Simplified)"), nullptr, CurrentLanguage() == Language::Chinese)) SetLanguage(Language::Chinese);
-			ImGui::EndMenu();
-		}
-		ImGui::Separator();
 		if (ImGui::MenuItem(Tr("About / License..."))) {
 			if (!UI.LicenceLoaded) {
 				// An installed copy carries LICENSE.txt next to the executable; a
@@ -568,6 +562,13 @@ void DrawMenuBar() {
 			}
 			UI.ShowAbout = true;
 		}
+		ImGui::EndMenu();
+	}
+
+	// Its own menu bar entry, after Help.
+	if (ImGui::BeginMenu(Tr("Language"))) {
+		if (ImGui::MenuItem(Tr("English"), nullptr, CurrentLanguage() == Language::English)) SetLanguage(Language::English);
+		if (ImGui::MenuItem(Tr("Chinese (Simplified)"), nullptr, CurrentLanguage() == Language::Chinese)) SetLanguage(Language::Chinese);
 		ImGui::EndMenu();
 	}
 
@@ -798,6 +799,10 @@ void DrawDialogs() {
 		if (ImGui::Begin(Tr("About Imagina"), &UI.ShowAbout)) {
 			ImGui::TextUnformatted(Tr("Imagina - fast fractal renderer & explorer"));
 			ImGui::TextUnformatted("Modified version (2026): zoom sequence export with lossless raw map files.");
+			ImGui::Separator();
+			ImGui::TextUnformatted("Source of the original program:  https://github.com/5E-324/Imagina");
+			ImGui::TextUnformatted("Source of this version:          https://github.com/haveyouwantto/Imagina");
+			ImGui::TextUnformatted("This fork (SDL3 front-end, zoom export): https://github.com/MarchBeta2087/Imagina");
 			ImGui::Separator();
 			ImGui::TextUnformatted(Tr("This build uses the SDL3 + Dear ImGui front-end."));
 			ImGui::Spacing();

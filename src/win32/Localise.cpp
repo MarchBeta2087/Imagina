@@ -30,7 +30,8 @@ std::wstring Translate(const std::wstring &Text) {
 	size_t Tab = Text.find(L'\t');
 	std::wstring Label = Text.substr(0, Tab);
 	if (Label.empty()) return Text;
-	std::wstring Translated = Widen(Tr(Narrow(Label.c_str()).c_str()));
+	std::string NarrowLabel = Narrow(Label.c_str());
+	std::wstring Translated = Widen(Tr(Untranslate(NarrowLabel.c_str())));
 	if (Translated == Label) return Text;
 	if (Tab == std::wstring::npos) return Translated;
 	return Translated + Text.substr(Tab);

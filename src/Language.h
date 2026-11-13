@@ -25,4 +25,9 @@ Language DetectSystemLanguage();
 // Translation lookup; the argument is the English text used in the source.
 const char *Tr(const char *English);
 
+// The other direction: the English text a translated string came from, so that a
+// front-end which rewrites its own labels (the Win32 menus and dialogs) can switch
+// back to English.  Returns the argument when it is not a translation.
+const char *Untranslate(const char *Translated);
+
 #endif
