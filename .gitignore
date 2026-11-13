@@ -374,3 +374,6 @@ CMakeSettings.json
 ## Fonts: the TTF used for CJK text is not distributed with the repository,
 ## see fonts/README.md.  / 中日韩字体不随仓库分发，见 fonts/README.md。
 fonts/*.ttf
+
+# vcpkg install tree (build artifact)
+vcpkg_installed/
