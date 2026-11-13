@@ -119,6 +119,17 @@ MPIR 是 GMP 的分支，源码两者都支持（`src/GmpCompat.h`）。MPIR 已
 凡是能以源码获取的依赖（glm、SDL3、Dear ImGui）在找不到时都会自动拉取，版本在
 `CMakeLists.txt` 里固定（`IMAGINA_GLM_TAG`、`IMAGINA_SDL3_TAG`、`IMAGINA_IMGUI_TAG`）。
 
+Windows SDK 只有 `gl.h`（OpenGL 1.1），没有 `glext.h`/`wglext.h`，所以不用 vcpkg 的
+Win32 构建需要把这三份 Khronos 头文件放进 `include/`：
+
+```
+> powershell -ExecutionPolicy Bypass -File tools/fetch-headers.ps1
+> .\build.ps1
+```
+
+Linux/MSYS2 用 `tools/fetch-headers.sh`。使用 vcpkg 时它们由 `opengl-registry`
+提供；找不到时 configure 阶段就会停下并给出这个提示。
+
 ### CMake 变量
 
 * `IMAGINA_DEPS_DIR` 存放随仓库分发依赖的目录，其下的 `include/` 与 `lib/`

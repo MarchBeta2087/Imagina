@@ -21,7 +21,11 @@
 #
 #   include\  mpir.h mpirxx.h gmp.h gmpxx.h gmp-impl.h config.h gmp-mparam.h
 #             longlong.h png.h pngconf.h pnglibconf.h zlib.h zconf.h
-#             glext.h wglext.h KHR\khrplatform.h glm\
+#             GL\glext.h GL\wglext.h KHR\khrplatform.h glm\
+#
+# The three Khronos headers are missing from the Windows SDK and from this
+# repository; fetch them with "powershell -File tools\fetch-headers.ps1"
+# (or use vcpkg, whose opengl-registry port provides them).
 #   lib\      mpir mpirxx libpng16 zlibwapi   (MSVC: .lib, GCC/Clang: lib*.a)
 #
 # With MSVC everything is built with the static C runtime (/MT) and MPIR is
