@@ -10,6 +10,7 @@
 #include "File.h"
 #include "Language.h"
 #include "WindowIcon.h"
+#include "CrashReport.h"
 #include "ZoomExport.h"
 #include "RawMapCodec.h"
 
@@ -1122,6 +1123,7 @@ int main(int argc, char **argv) {
 
 #ifdef _WIN32
 	if (getenv("IMAGINA_CRASH_REPORT")) SetUnhandledExceptionFilter(CrashHandler);
+	InstallCrashHandler("Imagina-crash.txt");
 #endif
 
 	if (!SDL_Init(SDL_INIT_VIDEO)) {

@@ -269,6 +269,7 @@ set(ImaginaCoreSources
 	src/RawMapCodec.cpp
 	src/Render.cpp
 	src/ZoomExport.cpp
+	src/platform/CrashReport.cpp
 	src/platform/PlatformMemory.cpp
 	src/platform/PlatformThread.cpp
 )
@@ -325,6 +326,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	target_link_libraries(Imagina ${PNG_LIBRARY})
 	target_link_libraries(Imagina ${ZLIB_LIBRARY})
 	target_link_libraries(Imagina "dwmapi")
+	target_link_libraries(Imagina "dbghelp")
 	target_link_libraries(Imagina ${MPIR_LIBRARY})
 
 	if(MPIR_USE_DLL)
