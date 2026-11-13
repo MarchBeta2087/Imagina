@@ -258,6 +258,7 @@ void StandardPixelManager::InitLayoutAndData() {
 		i++;
 	}
 
+
 	Coordinates = new Coordinate[PixelGroupCount];
 	Data = new float[TextureWidth * TextureHeight];
 
