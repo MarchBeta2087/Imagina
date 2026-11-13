@@ -68,8 +68,8 @@ $ ./Imagina --lang zh-CN
 字体按 18 像素乘以显示缩放光栅化；窗口移到缩放比例不同的显示器时界面会重新缩放。
 
 `cmake --install <构建目录> --prefix <目录>` 会生成发布压缩包的布局：可执行文件、
-`LICENSE.txt`、两份 Readme、`CHANGELOG.md`，以及包含许可文件与（已下载的）TTF 的
-`fonts/` 目录。
+`LICENSE.txt`、两份 Readme、`CHANGELOG.md`、含图标许可的 `icon/`，以及包含许可文件与
+（已下载的）TTF 的 `fonts/` 目录。
 
 ## 仓库结构
 
@@ -244,4 +244,7 @@ Imagina 1.0.0 (SDL front-end)
 
 ## 许可证
 
-GNU Affero General Public License v3.0，见 [LICENSE.txt](LICENSE.txt)。
+源代码采用 GNU Affero General Public License v3.0，见 [LICENSE.txt](LICENSE.txt)。
+
+[icon/](icon/) 里的图标（以及由它生成的窗口图标）不属于源代码，已按 CC0 1.0
+贡献到公有领域，见 [icon/LICENSE](icon/LICENSE)。
