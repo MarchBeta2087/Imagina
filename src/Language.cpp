@@ -231,6 +231,14 @@ Language DetectSystemLanguage() {
 	return Language::English;
 }
 
+const char *Untranslate(const char *Translated) {
+	if (!Translated) return "";
+	for (const Translation &Row : Translations) {
+		if (std::strcmp(Row.Translated, Translated) == 0) return Row.English;
+	}
+	return Translated;
+}
+
 const char *Tr(const char *English) {
 	if (!English) return "";
 	if (Active == Language::English) return English;
