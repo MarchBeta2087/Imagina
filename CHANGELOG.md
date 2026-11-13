@@ -10,6 +10,20 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-13
+
+### Fixed / 修复
+
+- A `VCPKG_ROOT` build on Windows now works from a clean directory: the vcpkg
+  include and library directories are added for the bare `#include`s this project
+  uses, the `GL/glext.h` check no longer stops a vcpkg build, and the zlib/libpng
+  and GMP/MPIR search no longer caches its fallback into the variables
+  `FindZLIB`/`FindPNG` own (which made a first failed configure permanent).
+  在 Windows 上用 `VCPKG_ROOT` 现在可以从空目录构建成功：项目用到的裸 `#include`
+  会找到 vcpkg 的 include/lib 目录，`GL/glext.h` 检查不再拦住 vcpkg 构建，
+  zlib/libpng 与 GMP/MPIR 的查找结果也不再写回 `FindZLIB`/`FindPNG` 自己的缓存变量
+  （之前第一次配置失败后会一直失败）。
+
 ## [1.0.1] - 2026-11-13
 
 ### Fixed / 修复
@@ -137,7 +151,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...dev
+[1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.1.0...v0.2.0
