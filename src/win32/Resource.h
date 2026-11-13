@@ -13,6 +13,7 @@
 #define IDD_REFERENCE_SAVING            117
 #define IDD_ZOOM_EXPORT                 119
 #define IDD_ABOUT                       121
+#define IDI_ICON1                       200
 #define IDC_EDIT1                       1000
 #define IDC_EDIT2                       1001
 #define IDC_IMAGINARY                   1001

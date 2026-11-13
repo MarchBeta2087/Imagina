@@ -168,6 +168,10 @@ END
 // "About / Licence" dialog.
 IDR_LICENSE             RCDATA                  "LICENSE.txt"
 
+// The program icon: window, taskbar, Explorer.  Generated from
+// icon/imagina_icon.png by tools/make-icon.py.
+IDI_ICON1               ICON                    "../../icon/imagina.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

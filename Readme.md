@@ -18,6 +18,7 @@ pull request and issue templates accept both languages.
 - [Build](#build)
 - [Front-ends](#front-ends)
 - [Development](#development)
+- [Changelog](CHANGELOG.md)
 - [License](#license)
 
 ## Controls
@@ -225,13 +226,14 @@ back with a pull request.  See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The version lives in one place, the `project(... VERSION ...)` command in
 `CMakeLists.txt`; `--version`, the About dialog and the Windows version resource
-all come from it (`vcpkg.json` repeats it for the manifest).  It is `0.1.0` now and
+all come from it (`vcpkg.json` repeats it for the manifest).  It is `0.2.0` now and
 stays `0.x` until the SDL front-end reaches parity with the Win32 one.  Releases use
-`vMAJOR.MINOR.PATCH` tags.
+`vMAJOR.MINOR.PATCH` tags, and every release is described in
+[CHANGELOG.md](CHANGELOG.md).
 
 ```
 $ ./build/Imagina --version
-Imagina 0.1.0 (SDL front-end)
+Imagina 0.2.0 (SDL front-end)
 ```
 
 ## License

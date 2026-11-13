@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.16)
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource.  0.x until the SDL front-end reaches parity with the
 # Win32 one (see the Readme, "Versioning").
-project ("Imagina" VERSION 0.1.0 LANGUAGES C CXX)
+project ("Imagina" VERSION 0.2.0 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)

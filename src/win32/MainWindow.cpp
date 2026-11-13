@@ -160,13 +160,13 @@ void CreateMainWindow() {
 	WindowClass.lpfnWndProc = WindowProcess;
 	WindowClass.cbClsExtra = 0;
 	WindowClass.cbWndExtra = 0;
-	WindowClass.hInstance = nullptr;
-	WindowClass.hIcon = nullptr;
+	WindowClass.hInstance = GetModuleHandle(nullptr);
+	WindowClass.hIcon = LoadIcon(WindowClass.hInstance, MAKEINTRESOURCE(IDI_ICON1));
 	WindowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	WindowClass.hbrBackground = nullptr;
 	WindowClass.lpszMenuName = nullptr;
 	WindowClass.lpszClassName = L"ImaginaMainWindow";
-	WindowClass.hIconSm = nullptr;
+	WindowClass.hIconSm = LoadIcon(WindowClass.hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
 	RegisterClassEx(&WindowClass);
 

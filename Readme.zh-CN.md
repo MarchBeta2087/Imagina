@@ -17,6 +17,7 @@ _简体中文 | [English](Readme.md)_
 - [构建](#构建)
 - [前端](#前端)
 - [开发流程](#开发流程)
+- [更新日志](CHANGELOG.md)
 - [许可证](#许可证)
 
 ## 操作方式
@@ -208,12 +209,12 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 
 版本号只有一处来源：`CMakeLists.txt` 里的 `project(... VERSION ...)`；`--version`、
 「关于」对话框和 Windows 版本资源都由它生成（`vcpkg.json` 里为 manifest 重复了一次）。
-目前是 `0.1.0`，在 SDL 前端与 Win32 前端功能对齐之前保持 `0.x`。发布使用
-`vMAJOR.MINOR.PATCH` 形式的标签。
+目前是 `0.2.0`，在 SDL 前端与 Win32 前端功能对齐之前保持 `0.x`。发布使用
+`vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在 [CHANGELOG.md](CHANGELOG.md)。
 
 ```
 $ ./build/Imagina --version
-Imagina 0.1.0 (SDL front-end)
+Imagina 0.2.0 (SDL front-end)
 ```
 
 ## 许可证
