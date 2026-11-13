@@ -3,11 +3,6 @@
 #include <cstring>
 #include <string>
 
-#if __has_include(<SDL3/SDL.h>)
-#include <SDL3/SDL.h>
-#define IMAGINA_HAS_SDL 1
-#endif
-
 namespace {
 
 Language Active = Language::English;
@@ -157,34 +152,9 @@ bool LanguageFromCode(std::string_view Code, Language &Result) {
 }
 
 Language DetectSystemLanguage() {
-#ifdef IMAGINA_HAS_SDL
-	int Count = 0;
-	SDL_Locale **Locales = SDL_GetPreferredLocales(&Count);
-	Language Result = Language::English;
-	if (Locales) {
-		for (int i = 0; i < Count; i++) {
-			if (!Locales[i] || !Locales[i]->language) continue;
-			std::string Code = Locales[i]->language;
-			if (Locales[i]->country) {
-				Code += "-";
-				Code += Locales[i]->country;
-			}
-			Language Candidate;
-			if (LanguageFromCode(Code, Candidate) && Candidate != Language::English) {
-				Result = Candidate;
-				break;
-			}
-			if (LanguageFromCode(Locales[i]->language, Candidate) && Candidate != Language::English) {
-				Result = Candidate;
-				break;
-			}
-		}
-		SDL_free(Locales);
-	}
-	return Result;
-#else
+	// The core does not talk to any platform API; the front-ends know the system
+	// locale (the SDL one asks SDL_GetPreferredLocales and calls SetLanguage).
 	return Language::English;
-#endif
 }
 
 const char *Tr(const char *English) {

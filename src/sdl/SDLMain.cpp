@@ -161,6 +161,27 @@ std::string Narrow(const std::wstring_view Text) {
 	return Result;
 }
 
+// The system locale as SDL reports it; the core does not depend on SDL, so this
+// stays in the front-end.
+Language DetectLanguageFromSdl() {
+	int Count = 0;
+	SDL_Locale **Locales = SDL_GetPreferredLocales(&Count);
+	Language Result = Language::English;
+	if (Locales) {
+		for (int i = 0; i < Count && Result == Language::English; i++) {
+			if (!Locales[i] || !Locales[i]->language) continue;
+			Language Candidate;
+			if (LanguageFromCode(Locales[i]->language, Candidate)) Result = Candidate;
+			if (Result == Language::English && Locales[i]->country) {
+				std::string Code = std::string(Locales[i]->language) + "-" + Locales[i]->country;
+				if (LanguageFromCode(Code, Candidate)) Result = Candidate;
+			}
+		}
+		SDL_free(Locales);
+	}
+	return Result;
+}
+
 // The CJK font from fonts/ (see fonts/README.md).  Dear ImGui's built-in font has
 // no CJK glyphs, so the UI falls back to it with a warning when the file is
 // missing instead of refusing to start.
@@ -1012,7 +1033,7 @@ int main(int argc, char **argv) {
 	ImGuiIO &IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui::StyleColorsDark();
-	if (!LanguageGiven) SetLanguage(DetectSystemLanguage());
+	if (!LanguageGiven) SetLanguage(DetectLanguageFromSdl());
 	LoadFont(IO);
 	ImGui_ImplSDL3_InitForOpenGL(Window, GLContext);
 	ImGui_ImplOpenGL3_Init("#version 150");
