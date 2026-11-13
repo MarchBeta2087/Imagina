@@ -1,6 +1,7 @@
 #include "Includes.h"
 #include "MainWindow.h"
 #include "ZoomExport.h"
+#include "Localise.h"
 
 #include "File.h"
 #include "RawMapCodec.h"
@@ -252,7 +253,7 @@ void SaveCurrentFrame() {
 	int32_t Width = 0, Height = 0;
 	if (!GetRawPixelData(Pixels, Width, Height)) {
 		Session.Active = false;
-		MessageBoxW(ExportDialog, L"The pixels of the frame cannot be read.", L"Export zoom sequence",
+		MessageBoxW(ExportDialog, TrW("The pixels of the frame cannot be read.").c_str(), TrW("Export zoom sequence").c_str(),
 			MB_OK | MB_ICONERROR | MB_TASKMODAL);
 		return;
 	}
@@ -493,22 +494,22 @@ bool ParseSettings(HWND hWndDlg) {
 	BOOL Translated = FALSE;
 	UINT Width = GetDlgItemInt(hWndDlg, IDC_EXPORT_WIDTH, &Translated, FALSE);
 	if (!Translated || Width < MinExportSize) {
-		MessageBoxA(hWndDlg, "Invalid width.", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Invalid width.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	UINT Height = GetDlgItemInt(hWndDlg, IDC_EXPORT_HEIGHT, &Translated, FALSE);
 	if (!Translated || Height < MinExportSize) {
-		MessageBoxA(hWndDlg, "Invalid height.", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Invalid height.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	if (uint64_t(Width) * uint64_t(Height) > MaxExportPixels) {
-		MessageBoxA(hWndDlg, "The image size is too large (more than 100 megapixels).", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("The image size is too large (more than 100 megapixels).").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 
 	double Step = strtod(GetDlgItemTextA(hWndDlg, IDC_EXPORT_STEP).c_str(), nullptr);
 	if (!(Step > 1.0) || Step > 1e9) {
-		MessageBoxA(hWndDlg, "Invalid zoom step (it has to be larger than 1).", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Invalid zoom step (it has to be larger than 1).").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 
@@ -518,11 +519,11 @@ bool ParseSettings(HWND hWndDlg) {
 	try {
 		TargetValue = ParseZoom(TargetType, TargetText, 2.0_hr);
 	} catch (...) {
-		MessageBoxA(hWndDlg, "Invalid zoom target.", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Invalid zoom target.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	if (!(TargetValue > 0.0_hr)) {
-		MessageBoxA(hWndDlg, "Invalid zoom target.", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Invalid zoom target.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 
@@ -565,7 +566,7 @@ bool StartNewExport(HWND hWndDlg) {
 
 	std::wstring Path = GetDlgItemText(hWndDlg, IDC_EXPORT_FILE);
 	if (Path.empty()) {
-		MessageBoxW(hWndDlg, L"Choose the output file (*.imz) first.", L"Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("Choose the output file (*.imz) first.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	SetRecordPath(Path);
@@ -582,7 +583,7 @@ bool StartNewExport(HWND hWndDlg) {
 		std::wstring Message = L"The file\n\n" + Path
 			+ L"\n\nalready exists.\nExport all key frames again and overwrite it?\n\n"
 			  L"To continue the export instead, use \"Resume zoom sequence\" in the file menu.";
-		if (MessageBoxW(hWndDlg, Message.c_str(), L"Export zoom sequence", MB_OKCANCEL | MB_ICONWARNING) != IDOK) {
+		if (MessageBoxW(hWndDlg, Message.c_str(), TrW("Export zoom sequence").c_str(), MB_OKCANCEL | MB_ICONWARNING) != IDOK) {
 			Session.Frames.clear();
 			Session.DoneCount = 0;
 			return false;
@@ -592,7 +593,7 @@ bool StartNewExport(HWND hWndDlg) {
 	// The location is the one which is displayed right now.
 	Session.BaseHalfH = FContext.CurrentLocation.HalfH;
 	if (!BuildFrames()) {
-		MessageBoxA(hWndDlg, "The selected stop condition does not produce any key frame.", "Export zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, TrW("The selected stop condition does not produce any key frame.").c_str(), TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	// The deepest key frame (the current view) needs the most precision, and the
@@ -646,7 +647,7 @@ bool ResumeExport(HWND hWndDlg) {
 	if (!ReadRecordFile()) {
 		std::wstring Message = L"The record\n\n" + Path
 			+ L"\n\nand the location file it names cannot be read.";
-		MessageBoxW(hWndDlg, Message.c_str(), L"Resume zoom sequence", MB_OK | MB_ICONERROR);
+		MessageBoxW(hWndDlg, Message.c_str(), TrW("Resume zoom sequence").c_str(), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	// A record which does not list the iteration limits of its key frames (one
@@ -675,9 +676,9 @@ void BeginExport(HWND hWndDlg) {
 	size_t Pending = 0;
 	for (const ExportFrame &Frame : Session.Frames) if (!Frame.Done) Pending++;
 	if (!Pending) {
-		MessageBoxW(hWndDlg, L"All key frames are already exported.\n"
-			L"Pick another output file to export them again.",
-			L"Export zoom sequence", MB_OK | MB_ICONINFORMATION);
+		MessageBoxW(hWndDlg,
+			(TrW("All key frames are already exported.\n") + TrW("Pick another output file to export them again.")).c_str(),
+			TrW("Export zoom sequence").c_str(), MB_OK | MB_ICONINFORMATION);
 		return;
 	}
 
@@ -783,6 +784,7 @@ INT_PTR ZoomExportProc(HWND hWndDlg, UINT Message, WPARAM wParam, LPARAM /*lPara
 	switch (Message) {
 		case WM_INITDIALOG: {
 			ExportDialog = hWndDlg;
+			LocaliseWindow(hWndDlg);
 			INITCOMMONCONTROLSEX Controls = { sizeof(INITCOMMONCONTROLSEX), ICC_PROGRESS_CLASS };
 			InitCommonControlsEx(&Controls);
 			SendMessage(GetDlgItem(hWndDlg, IDC_EXPORT_PROGRESS), PBM_SETRANGE32, 0, 1000);

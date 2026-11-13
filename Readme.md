@@ -14,6 +14,7 @@ pull request and issue templates accept both languages.
 
 - [Controls](#controls)
 - [Zoom sequence export](#zoom-sequence-export)
+- [Language and fonts](#language-and-fonts)
 - [Repository layout](#repository-layout)
 - [Build](#build)
 - [Front-ends](#front-ends)
@@ -50,6 +51,34 @@ The iteration limit of a key frame follows its scale: it is read from the orbit
 of the centre (the period of the view), so that the wide key frames do not spend
 the limit of the deepest one on the pixels which are inside the set.  The limits
 an export would use are listed by `Imagina.exe --period <record.imz>`.
+
+## Language and fonts
+
+The SDL front-end speaks English and Simplified Chinese.  `--lang en|zh-CN`
+chooses the language; without it the language comes from the system locale
+(`SDL_GetPreferredLocales`), and "Help" -> "Language" switches it at run time.
+The strings live in `src/Language.cpp`: `Tr("English text")` looks up the
+translation and falls back to the English text, so a missing entry is never an
+empty label.  `tools/check-translations.py` fails when a string used in the
+source has no row in that table; CI runs it.
+
+Chinese needs a font with CJK glyphs.  The UI looks for
+`SarasaMonoSC-Regular.ttf` next to the executable, in `fonts/` next to it and in
+the working directory, and starts on the built-in font with a warning when it is
+missing.  The TTF is a release asset (`deps-fonts-v1`, see [fonts/README.md](fonts/README.md)),
+fetched by `tools/fetch-fonts.ps1` or `tools/fetch-fonts.sh`:
+
+```
+$ tools/fetch-fonts.sh
+$ ./Imagina --lang zh-CN
+```
+
+The font is rasterised at 18 pixels times the display scale, and the UI is
+re-scaled when the window moves to a display with another scale.
+
+`cmake --install <build> --prefix <dir>` produces the layout of a release
+archive: the executable, `LICENSE.txt`, the Readmes, `CHANGELOG.md`, and
+`fonts/` with the licence and the TTF when it has been fetched.
 
 ## Repository layout
 
@@ -226,14 +255,12 @@ back with a pull request.  See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The version lives in one place, the `project(... VERSION ...)` command in
 `CMakeLists.txt`; `--version`, the About dialog and the Windows version resource
-all come from it (`vcpkg.json` repeats it for the manifest).  It is `0.2.0` now and
-stays `0.x` until the SDL front-end reaches parity with the Win32 one.  Releases use
-`vMAJOR.MINOR.PATCH` tags, and every release is described in
-[CHANGELOG.md](CHANGELOG.md).
+all come from it (`vcpkg.json` repeats it for the manifest).  It is `1.0.0`.  Releases use `vMAJOR.MINOR.PATCH` tags, and every release is
+described in [CHANGELOG.md](CHANGELOG.md).
 
 ```
 $ ./build/Imagina --version
-Imagina 0.2.0 (SDL front-end)
+Imagina 1.0.0 (SDL front-end)
 ```
 
 ## License

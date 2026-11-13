@@ -100,6 +100,35 @@ jobs:
           assert max(finite) > 1.0, 'the key frame has no iteration counts'
           EOF
 
+      - name: Check the translations are complete
+        run: python3 tools/check-translations.py
+
+      - name: Render the UI in Chinese
+        run: |
+          set -x
+          ./tools/fetch-fonts.sh
+          ls -l fonts/SarasaMonoSC-Regular.ttf
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina             --lang zh-CN --frames 90 --screenshot /tmp/shot-zh.bmp 2>/tmp/zh.log
+          grep -q 'using the font' /tmp/zh.log
+          python3 - <<'EOF'
+          import struct
+          data = open('/tmp/shot-zh.bmp', 'rb').read()
+          offset = struct.unpack_from('<I', data, 10)[0]
+          width, height = struct.unpack_from('<ii', data, 18)
+          stride = ((width * 4) + 3) // 4 * 4
+          rows = abs(height)
+          flipped = height > 0
+
+          def pixel(x, y):
+              row = rows - 1 - y if flipped else y
+              i = offset + row * stride + x * 4
+              return data[i + 2], data[i + 1], data[i]
+
+          colours = len({pixel(x, y) for y in range(0, rows, 29) for x in range(0, width, 29)})
+          print(f'{width}x{height}, {colours} distinct colours')
+          assert colours > 50, 'the Chinese UI did not render'
+          EOF
+
   windows-msvc:
     name: Windows (MSVC, vcpkg)
     runs-on: windows-latest
