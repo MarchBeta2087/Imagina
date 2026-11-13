@@ -10,6 +10,7 @@
 #include "RawMapCodec.h"
 #include "ZoomExport.h"
 #include "Language.h"
+#include "CrashReport.h"
 
 // Imagina.exe --decode <map.rawz> [<out.raw>]
 // Expands a compressed raw map into the plain layout "Save raw pixel data"
@@ -92,6 +93,10 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 		}
 		if (!Given && PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_CHINESE) SetLanguage(Language::Chinese);
 	}
+
+	// Without this a crash shows only "it stopped working"; the report next to the
+	// executable carries the stack.
+	InstallCrashHandler("Imagina-crash.txt");
 
 	CreateMainWindow();
 	InitRenderResources();

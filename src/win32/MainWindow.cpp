@@ -104,8 +104,9 @@ void CreateMainWindow() {
 
 	// Help -> Language.  The items are localised like every other menu item: the
 	// two language names are in the table in their own language.
+	// A top level entry of its own, after Help.
 	LanguageMenu = CreatePopupMenu();
-	AppendMenuW(HelpMenu, MF_POPUP, (UINT_PTR)LanguageMenu, L"Language");
+	AppendMenuW(MainMenu, MF_POPUP, (UINT_PTR)LanguageMenu, L"Language");
 	AppendMenuW(LanguageMenu, MF_STRING, (UINT_PTR)MenuID::LanguageEnglish, L"English");
 	AppendMenuW(LanguageMenu, MF_STRING, (UINT_PTR)MenuID::LanguageChinese, L"Chinese (Simplified)");
 	CheckMenuRadioItem(LanguageMenu, (UINT_PTR)MenuID::LanguageBegin, (UINT_PTR)MenuID::LanguageEnd,
@@ -353,7 +354,8 @@ static const wchar_t AboutNotice[] =
 	L"(*.rawz), the raw map codec and the command line and Python tools were added.\r\n"
 	L"\r\n"
 	L"Source of the original program:  https://github.com/5E-324/Imagina\r\n"
-	L"Source of this version:          https://github.com/haveyouwantto/Imagina\r\n";
+	L"Source of this version:          https://github.com/haveyouwantto/Imagina\r\n"
+	L"This fork (SDL3 front-end, zoom export): https://github.com/MarchBeta2087/Imagina\r\n";
 
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {

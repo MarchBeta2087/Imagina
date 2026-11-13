@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.16)
 
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource (see the Readme, "Versioning").
-project ("Imagina" VERSION 1.0.2 LANGUAGES C CXX)
+project ("Imagina" VERSION 1.0.3 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
@@ -269,6 +269,7 @@ set(ImaginaCoreSources
 	src/RawMapCodec.cpp
 	src/Render.cpp
 	src/ZoomExport.cpp
+	src/platform/CrashReport.cpp
 	src/platform/PlatformMemory.cpp
 	src/platform/PlatformThread.cpp
 )
@@ -325,6 +326,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	target_link_libraries(Imagina ${PNG_LIBRARY})
 	target_link_libraries(Imagina ${ZLIB_LIBRARY})
 	target_link_libraries(Imagina "dwmapi")
+	target_link_libraries(Imagina "dbghelp")
 	target_link_libraries(Imagina ${MPIR_LIBRARY})
 
 	if(MPIR_USE_DLL)
@@ -345,6 +347,10 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# The .rc file already carries a manifest, and the static MPIR build
 		# produces a duplicate PDB reference warning.
 		target_link_options(Imagina PRIVATE /MANIFEST:NO /IGNORE:4099)
+		# Debug information in the release build: the crash report next to the
+		# executable is only readable when a PDB is there to name the frames.
+		target_compile_options(Imagina PRIVATE /Zi)
+		target_link_options(Imagina PRIVATE /DEBUG)
 	else()
 		# wWinMain needs the unicode entry point under MinGW-w64, and the
 		# linker's own default manifest cannot be combined with the one in

@@ -10,6 +10,33 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-13
+
+### Fixed / 修复
+
+- Saving a location (File -> Save, `*.im`) crashed when the reference orbit was
+  written: the orbit array holds `complex<HRReal>`, but the writer decided on a
+  `complex<double>` stride from the stage precision and ran past the end.
+  `Reference` now records the element type it was loaded with, and freshly
+  computed references are always saved in the `HRReal` form.
+  保存位置（文件 → 保存，`*.im`）在写入参考轨道时崩溃：轨道数组是
+  `complex<HRReal>`，写入端却按阶段精度当成 `complex<double>` 计算步长而越界。
+  现在 `Reference` 记录载入时的元素类型，新计算的参考轨道一律按 `HRReal` 保存。
+- The language menu is its own top level entry after Help, and switching works in
+  both directions (it could not go back to English).
+  语言菜单独立为「帮助」之后的顶级菜单，并且可以来回切换（之前切不回英文）。
+- `build.sh` built only the codec test outside Windows; the window application is
+  the default on every platform now.
+  `build.sh` 在非 Windows 平台只编译编解码测试；现在所有平台默认编译窗口程序。
+- The About window lists this fork's repository next to the original ones.
+  「关于」窗口在原有仓库链接之外列出本 fork 的仓库。
+
+### Added / 新增
+
+- `Imagina-crash.txt`: a crash report next to the executable with the faulting
+  module/offset, the faulting address and a 32 frame stack walk.
+  崩溃报告 `Imagina-crash.txt`：可执行文件旁记录出错模块/偏移、出错地址和 32 帧调用栈。
+
 ## [1.0.2] - 2026-11-13
 
 ### Fixed / 修复
@@ -151,7 +178,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...dev
+[1.0.3]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.2.0...v1.0.0

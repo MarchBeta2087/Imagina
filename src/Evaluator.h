@@ -25,6 +25,12 @@ struct ReferenceTrivialContent {
 struct Reference : ReferenceTrivialContent {
 	Coordinate CenterCoordinate;
 
+	// The orbit array of an LAReference<HRReal> holds complex<HRReal> elements.
+	// A reference read back from a file that stored a plain double orbit keeps its
+	// elements as complex<double> instead, which has a different stride: saving such
+	// a reference has to know which one it is looking at (see SaveReference).
+	bool OrbitIsDouble = false;
+
 	virtual ~Reference();
 };
 
