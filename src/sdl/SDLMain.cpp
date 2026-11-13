@@ -8,6 +8,7 @@
 
 #include "Includes.h"
 #include "File.h"
+#include "Language.h"
 #include "RawMapCodec.h"
 
 #include <SDL3/SDL.h>
@@ -149,12 +150,51 @@ bool ShowFileDialog(bool Save, const char *Filters, std::string &Path, int &Filt
 
 // --- small helpers ----------------------------------------------------------
 std::string Narrow(const std::wstring_view Text) {
-	// The descriptions built by FeatureFinder are ASCII, so a plain copy is
-	// enough and avoids the deprecated codecvt machinery.
-	std::string Result;
-	Result.reserve(Text.size());
-	for (wchar_t Character : Text) Result.push_back(Character < 128 ? char(Character) : '?');
+	// FeatureFinder builds wide strings; the UI draws UTF-8, and SDL converts
+	// between the two without depending on the C locale.
+	if (Text.empty()) return std::string();
+	size_t Size = Text.size() * sizeof(wchar_t);
+	char *Converted = SDL_iconv_string("UTF-8", "WCHAR_T", reinterpret_cast<const char *>(Text.data()), Size + sizeof(wchar_t));
+	if (!Converted) return std::string(Text.begin(), Text.end());
+	std::string Result(Converted);
+	SDL_free(Converted);
 	return Result;
+}
+
+// The CJK font from fonts/ (see fonts/README.md).  Dear ImGui's built-in font has
+// no CJK glyphs, so the UI falls back to it with a warning when the file is
+// missing instead of refusing to start.
+bool LoadFont(ImGuiIO &IO) {
+	const char *Name = "SarasaMonoSC-Regular.ttf";
+	std::vector<std::filesystem::path> Candidates;
+
+	const char *Base = SDL_GetBasePath();
+	if (Base) {
+		std::filesystem::path Directory(Base);
+		Candidates.push_back(Directory / Name);
+		Candidates.push_back(Directory / "fonts" / Name);
+		SDL_free(const_cast<char *>(Base));
+	}
+	Candidates.push_back(std::filesystem::path("fonts") / Name);
+	Candidates.push_back(std::filesystem::path(Name));
+
+	for (const std::filesystem::path &Candidate : Candidates) {
+		std::error_code Error;
+		if (!std::filesystem::exists(Candidate, Error)) continue;
+		ImFontConfig Config;
+		Config.OversampleH = 2;
+		Config.OversampleV = 1;
+		if (IO.Fonts->AddFontFromFileTTF(Candidate.string().c_str(), 18.0f, &Config)) {
+			fprintf(stderr, "using the font %s", Candidate.string().c_str());
+			fputc(10, stderr);
+			return true;
+		}
+	}
+
+	fprintf(stderr, "font %s not found, CJK text will not render (see fonts/README.md)", Name);
+	fputc(10, stderr);
+	IO.Fonts->AddFontDefault();
+	return false;
 }
 
 std::string FormatMpf(const mpf_class &Value, int Digits, char Format = 'f') {
@@ -323,7 +363,7 @@ void SaveFilePrompt() {
 
 void SaveImagePrompt(bool Raw) {
 	if (!FContext.pixelManager.Completed()) {
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Save image", "Please wait for computations to finish.", Window);
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, Tr("Save image"), Tr("Please wait for computations to finish."), Window);
 		return;
 	}
 
@@ -343,13 +383,13 @@ void SaveImagePrompt(bool Raw) {
 void DrawMenuBar() {
 	if (!ImGui::BeginMainMenuBar()) return;
 
-	if (ImGui::BeginMenu("File")) {
-		if (ImGui::MenuItem("Open...", "Ctrl+O")) OpenFilePrompt();
-		if (ImGui::MenuItem("Save...", "Ctrl+S")) SaveFilePrompt();
-		if (ImGui::MenuItem("Save image...", "Ctrl+Shift+S")) SaveImagePrompt(false);
-		if (ImGui::MenuItem("Save raw pixel data...")) SaveImagePrompt(true);
+	if (ImGui::BeginMenu(Tr("File"))) {
+		if (ImGui::MenuItem(Tr("Open..."), "Ctrl+O")) OpenFilePrompt();
+		if (ImGui::MenuItem(Tr("Save..."), "Ctrl+S")) SaveFilePrompt();
+		if (ImGui::MenuItem(Tr("Save image..."), "Ctrl+Shift+S")) SaveImagePrompt(false);
+		if (ImGui::MenuItem(Tr("Save raw pixel data..."))) SaveImagePrompt(true);
 		ImGui::Separator();
-		if (ImGui::MenuItem("Quit", "Ctrl+Q")) {
+		if (ImGui::MenuItem(Tr("Quit"), "Ctrl+Q")) {
 			SDL_Event Quit = {};
 			Quit.type = SDL_EVENT_QUIT;
 			SDL_PushEvent(&Quit);
@@ -357,99 +397,99 @@ void DrawMenuBar() {
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Fractal")) {
-		if (ImGui::BeginMenu("Formula")) {
-			if (ImGui::MenuItem("Mandelbrot", nullptr, CurrentFractalType == FractalTypeEnum::Mandelbrot)) SetFractalType(FractalTypeEnum::Mandelbrot);
-			if (ImGui::MenuItem("Tricorn", nullptr, CurrentFractalType == FractalTypeEnum::Tricorn)) SetFractalType(FractalTypeEnum::Tricorn);
-			if (ImGui::MenuItem("Burning ship", nullptr, CurrentFractalType == FractalTypeEnum::BurningShip)) SetFractalType(FractalTypeEnum::BurningShip);
-			if (ImGui::MenuItem("Nova", nullptr, CurrentFractalType == FractalTypeEnum::Nova)) SetFractalType(FractalTypeEnum::Nova);
+	if (ImGui::BeginMenu(Tr("Fractal"))) {
+		if (ImGui::BeginMenu(Tr("Formula"))) {
+			if (ImGui::MenuItem(Tr("Mandelbrot"), nullptr, CurrentFractalType == FractalTypeEnum::Mandelbrot)) SetFractalType(FractalTypeEnum::Mandelbrot);
+			if (ImGui::MenuItem(Tr("Tricorn"), nullptr, CurrentFractalType == FractalTypeEnum::Tricorn)) SetFractalType(FractalTypeEnum::Tricorn);
+			if (ImGui::MenuItem(Tr("Burning ship"), nullptr, CurrentFractalType == FractalTypeEnum::BurningShip)) SetFractalType(FractalTypeEnum::BurningShip);
+			if (ImGui::MenuItem(Tr("Nova"), nullptr, CurrentFractalType == FractalTypeEnum::Nova)) SetFractalType(FractalTypeEnum::Nova);
 			ImGui::EndMenu();
 		}
 
 		bool DistanceEstimation = UseDE;
 		bool SupportsDE = CurrentFractalType == FractalTypeEnum::Nova ||
 			(CurrentFractalType == FractalTypeEnum::Mandelbrot && UseLinearApproximation);
-		if (ImGui::MenuItem("Distance estimation", nullptr, &DistanceEstimation, SupportsDE)) {
+		if (ImGui::MenuItem(Tr("Distance estimation"), nullptr, &DistanceEstimation, SupportsDE)) {
 			UseDE = DistanceEstimation;
 			FContext.SetUseDE(UseDE);
 		}
 
 		bool HighQuality = Global::HighQuality;
 		bool SupportsHQ = CurrentFractalType == FractalTypeEnum::Mandelbrot && UseLinearApproximation;
-		if (ImGui::MenuItem("High quality (Experimental)", nullptr, &HighQuality, SupportsHQ)) {
+		if (ImGui::MenuItem(Tr("High quality (Experimental)"), nullptr, &HighQuality, SupportsHQ)) {
 			Global::HighQuality = HighQuality;
 			FContext.InvalidatePixel();
 		}
 
 		ImGui::Separator();
-		if (ImGui::MenuItem("Location...")) OpenLocationDialog();
-		if (ImGui::MenuItem("Iteration limit...")) OpenIterationLimitDialog();
-		if (ImGui::MenuItem("Transformation...")) OpenTransformationDialog();
+		if (ImGui::MenuItem(Tr("Location..."))) OpenLocationDialog();
+		if (ImGui::MenuItem(Tr("Iteration limit..."))) OpenIterationLimitDialog();
+		if (ImGui::MenuItem(Tr("Transformation..."))) OpenTransformationDialog();
 		ImGui::Separator();
-		if (ImGui::MenuItem("Increase color density", "A")) {
+		if (ImGui::MenuItem(Tr("Increase color density"), "A")) {
 			Global::ItDiv = std::max(8.0_sr, Global::ItDiv / 2);
 			if (Global::PreModulo && Global::ItDiv * Global::MaxPreModMultiplier < Global::ItMod) {
 				Global::ItMod = Global::ItDiv * Global::DefaultPreModMultiplier;
 				FContext.InvalidatePixel();
 			}
 		}
-		if (ImGui::MenuItem("Decrease color density", "S")) {
+		if (ImGui::MenuItem(Tr("Decrease color density"), "S")) {
 			Global::ItDiv = std::min(0x1p48_sr, Global::ItDiv * 2);
 			if (Global::PreModulo && Global::ItDiv > Global::ItMod) {
 				Global::ItMod = Global::ItDiv * Global::DefaultPreModMultiplier;
 				FContext.InvalidatePixel();
 			}
 		}
-		if (ImGui::MenuItem("Increase iteration limit", "D")) {
+		if (ImGui::MenuItem(Tr("Increase iteration limit"), "D")) {
 			Global::ItLim = std::min(UINT64_C(1) << 48, Global::ItLim * 2);
 			FContext.ParameterChanged = true;
 		}
-		if (ImGui::MenuItem("Decrease iteration limit", "F")) {
+		if (ImGui::MenuItem(Tr("Decrease iteration limit"), "F")) {
 			Global::ItLim = std::max(UINT64_C(8), Global::ItLim / 2);
 			FContext.ParameterChanged = true;
 		}
 		ImGui::Separator();
-		if (ImGui::MenuItem("Reset location")) ResetLocation();
+		if (ImGui::MenuItem(Tr("Reset location"))) ResetLocation();
 
-		if (FContext.Feature && ImGui::MenuItem("Feature finder...")) UI.ShowFeature = true;
+		if (FContext.Feature && ImGui::MenuItem(Tr("Feature finder..."))) UI.ShowFeature = true;
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Computation")) {
-		if (ImGui::BeginMenu("Algorithm")) {
+	if (ImGui::BeginMenu(Tr("Computation"))) {
+		if (ImGui::BeginMenu(Tr("Algorithm"))) {
 			bool CanChange = CurrentFractalType == FractalTypeEnum::Mandelbrot;
-			if (ImGui::MenuItem("Perturbation", nullptr, !UseLinearApproximation, CanChange)) {
+			if (ImGui::MenuItem(Tr("Perturbation"), nullptr, !UseLinearApproximation, CanChange)) {
 				UseLinearApproximation = false;
 				FContext.ChangeFractalType(CurrentFractalType, false);
 			}
-			if (ImGui::MenuItem("Linear approximation", nullptr, UseLinearApproximation, CanChange)) {
+			if (ImGui::MenuItem(Tr("Linear approximation"), nullptr, UseLinearApproximation, CanChange)) {
 				UseLinearApproximation = true;
 				FContext.ChangeFractalType(CurrentFractalType, true);
 			}
 			ImGui::EndMenu();
 		}
-		if (ImGui::BeginMenu("Recompute")) {
-			if (ImGui::MenuItem("Reference")) FContext.InvalidateReference();
-			if (ImGui::MenuItem("Pixel")) FContext.InvalidatePixel();
-			if (ImGui::MenuItem("All")) FContext.InvalidateAll();
+		if (ImGui::BeginMenu(Tr("Recompute"))) {
+			if (ImGui::MenuItem(Tr("Reference"))) FContext.InvalidateReference();
+			if (ImGui::MenuItem(Tr("Pixel"))) FContext.InvalidatePixel();
+			if (ImGui::MenuItem(Tr("All"))) FContext.InvalidateAll();
 			ImGui::EndMenu();
 		}
-		ImGui::MenuItem("Lock reference", nullptr, &FContext.LockReference);
-		ImGui::MenuItem("Tasks...", nullptr, &UI.ShowTasks);
+		ImGui::MenuItem(Tr("Lock reference"), nullptr, &FContext.LockReference);
+		ImGui::MenuItem(Tr("Tasks..."), nullptr, &UI.ShowTasks);
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Image")) {
-		if (ImGui::MenuItem("Image size...")) OpenImageSizeDialog();
-		ImGui::MenuItem("Bilinear filter", nullptr, &Global::UseBilinearFilter);
-		if (ImGui::MenuItem("Pre-modulo (workaround for precision loss)", nullptr, &Global::PreModulo)) FContext.InvalidatePixel();
-		if (ImGui::MenuItem("Palette mipmaps", nullptr, &UsePalleteMipmaps)) EnablePaletteMipmap(UsePalleteMipmaps);
-		ImGui::MenuItem("Gamma correction", nullptr, &Global::GammaCorrection);
+	if (ImGui::BeginMenu(Tr("Image"))) {
+		if (ImGui::MenuItem(Tr("Image size..."))) OpenImageSizeDialog();
+		ImGui::MenuItem(Tr("Bilinear filter"), nullptr, &Global::UseBilinearFilter);
+		if (ImGui::MenuItem(Tr("Pre-modulo (workaround for precision loss)"), nullptr, &Global::PreModulo)) FContext.InvalidatePixel();
+		if (ImGui::MenuItem(Tr("Palette mipmaps"), nullptr, &UsePalleteMipmaps)) EnablePaletteMipmap(UsePalleteMipmaps);
+		ImGui::MenuItem(Tr("Gamma correction"), nullptr, &Global::GammaCorrection);
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Help")) {
-		if (ImGui::MenuItem("About / License...")) {
+	if (ImGui::BeginMenu(Tr("Help"))) {
+		if (ImGui::MenuItem(Tr("About / License..."))) {
 			if (!UI.LicenceLoaded) {
 				std::ifstream File(IMAGINA_LICENSE_PATH);
 				std::stringstream Contents;
@@ -470,13 +510,13 @@ void DrawDialogs() {
 	if (UI.ShowImageSize) {
 		ImGui::SetNextWindowPos(ImVec2(40, 80), ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(320, 0), ImGuiCond_Appearing);
-		if (ImGui::Begin("Image size", &UI.ShowImageSize, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::Checkbox("Follow window size", &UI.ImageFollowWindow);
-			ImGui::InputInt("Width", &UI.ImageWidth);
-			ImGui::InputInt("Height", &UI.ImageHeight);
-			ImGui::Checkbox("Set window size", &UI.ImageSetWindowSize);
+		if (ImGui::Begin(Tr("Image size"), &UI.ShowImageSize, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::Checkbox(Tr("Follow window size"), &UI.ImageFollowWindow);
+			ImGui::InputInt(Tr("Width"), &UI.ImageWidth);
+			ImGui::InputInt(Tr("Height"), &UI.ImageHeight);
+			ImGui::Checkbox(Tr("Set window size"), &UI.ImageSetWindowSize);
 			ImGui::Separator();
-			if (ImGui::Button("Apply", ImVec2(100, 0))) {
+			if (ImGui::Button(Tr("Apply"), ImVec2(100, 0))) {
 				int Width = std::max(16, UI.ImageWidth), Height = std::max(16, UI.ImageHeight);
 				Global::ImageSizeFollowWindowSize = UI.ImageFollowWindow;
 				FContext.SetResolution(Width, Height);
@@ -486,21 +526,21 @@ void DrawDialogs() {
 				if (UI.ImageSetWindowSize) SDL_SetWindowSize(Window, Width, Height);
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("Close", ImVec2(100, 0))) UI.ShowImageSize = false;
+			if (ImGui::Button(Tr("Close"), ImVec2(100, 0))) UI.ShowImageSize = false;
 		}
 		ImGui::End();
 	}
 
 	if (UI.ShowIterationLimit) {
 		ImGui::SetNextWindowPos(ImVec2(400, 80), ImGuiCond_Appearing);
-		if (ImGui::Begin("Iteration limit", &UI.ShowIterationLimit, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::InputInt("Iterations", &UI.IterationLimit);
-			if (ImGui::Button("Apply", ImVec2(100, 0))) {
+		if (ImGui::Begin(Tr("Iteration limit"), &UI.ShowIterationLimit, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::InputInt(Tr("Iterations"), &UI.IterationLimit);
+			if (ImGui::Button(Tr("Apply"), ImVec2(100, 0))) {
 				Global::ItLim = std::max(UINT64_C(2), uint64_t(std::max(2, UI.IterationLimit)));
 				FContext.ParameterChanged = true;
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("Close", ImVec2(100, 0))) UI.ShowIterationLimit = false;
+			if (ImGui::Button(Tr("Close"), ImVec2(100, 0))) UI.ShowIterationLimit = false;
 		}
 		ImGui::End();
 	}
@@ -508,17 +548,17 @@ void DrawDialogs() {
 	if (UI.ShowLocation) {
 		ImGui::SetNextWindowPos(ImVec2(40, 270), ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(480, 0), ImGuiCond_Appearing);
-		if (ImGui::Begin("Location", &UI.ShowLocation, ImGuiWindowFlags_AlwaysAutoResize)) {
-			static const char *ZoomTypes[] = { "Height", "Half height", "Magnification", "Depth" };
-			if (ImGui::Combo("Unit", &UI.ZoomTypeIndex, ZoomTypes, 4)) {
+		if (ImGui::Begin(Tr("Location"), &UI.ShowLocation, ImGuiWindowFlags_AlwaysAutoResize)) {
+			const char *ZoomTypes[] = { Tr("Height"), Tr("Half height"), Tr("Magnification"), Tr("Depth") };
+			if (ImGui::Combo(Tr("Unit"), &UI.ZoomTypeIndex, ZoomTypes, 4)) {
 				UI.LocationZoom = ZoomToString(ZoomType(UI.ZoomTypeIndex), FContext.CurrentLocation.HalfH, 2.0_hr);
 			}
-			ImGui::InputText("Real", &UI.LocationReal);
-			ImGui::InputText("Imaginary", &UI.LocationImaginary);
-			ImGui::InputText("Zoom", &UI.LocationZoom);
-			ImGui::InputInt("Iterations", &UI.LocationIterations);
+			ImGui::InputText(Tr("Real"), &UI.LocationReal);
+			ImGui::InputText(Tr("Imaginary"), &UI.LocationImaginary);
+			ImGui::InputText(Tr("Zoom"), &UI.LocationZoom);
+			ImGui::InputInt(Tr("Iterations"), &UI.LocationIterations);
 			ImGui::Separator();
-			if (ImGui::Button("Apply", ImVec2(100, 0))) {
+			if (ImGui::Button(Tr("Apply"), ImVec2(100, 0))) {
 				try {
 					mpf_class PrevX(FContext.CenterCoordinate.X), PrevY(FContext.CenterCoordinate.Y);
 					try {
@@ -547,9 +587,9 @@ void DrawDialogs() {
 						throw;
 					}
 				} catch (const std::exception &) {
-					UI.Error = "Value invalid.";
+					UI.Error = Tr("Value invalid.");
 				} catch (...) {
-					UI.Error = "Value invalid.";
+					UI.Error = Tr("Value invalid.");
 				}
 			}
 			if (!UI.Error.empty()) {
@@ -562,15 +602,15 @@ void DrawDialogs() {
 
 	if (UI.ShowTransformation) {
 		ImGui::SetNextWindowPos(ImVec2(560, 270), ImGuiCond_Appearing);
-		if (ImGui::Begin("Transformation", &UI.ShowTransformation, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::Checkbox("Flip imaginary axis", &UI.FlipImaginary);
-			ImGui::InputFloat("Rotation", &UI.Rotation);
-			ImGui::InputFloat("Stretch angle", &UI.StretchAngle);
-			ImGui::InputFloat("Stretch ratio", &UI.StretchRatio);
+		if (ImGui::Begin(Tr("Transformation"), &UI.ShowTransformation, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::Checkbox(Tr("Flip imaginary axis"), &UI.FlipImaginary);
+			ImGui::InputFloat(Tr("Rotation"), &UI.Rotation);
+			ImGui::InputFloat(Tr("Stretch angle"), &UI.StretchAngle);
+			ImGui::InputFloat(Tr("Stretch ratio"), &UI.StretchRatio);
 			ImGui::Separator();
-			if (ImGui::Button("Apply", ImVec2(100, 0))) {
+			if (ImGui::Button(Tr("Apply"), ImVec2(100, 0))) {
 				if (UI.StretchRatio == 0.0f) {
-					UI.Error = "Value invalid.";
+					UI.Error = Tr("Value invalid.");
 				} else {
 					UI.Error.clear();
 					Global::FlipImaginaryAxis = UI.FlipImaginary;
@@ -609,27 +649,27 @@ void DrawDialogs() {
 
 	if (UI.ShowTasks) {
 		ImGui::SetNextWindowPos(ImVec2(40, 520), ImGuiCond_Appearing);
-		if (ImGui::Begin("Tasks", &UI.ShowTasks, ImGuiWindowFlags_AlwaysAutoResize)) {
+		if (ImGui::Begin(Tr("Tasks"), &UI.ShowTasks, ImGuiWindowFlags_AlwaysAutoResize)) {
 			SRReal Numerator = 0, Denominator = 1;
 			auto &Manager = FContext.pixelManager;
 			if (Manager.GetProgress(Numerator, Denominator) && Denominator > 0) {
 				ImGui::ProgressBar(float(Numerator / Denominator), ImVec2(220, 0));
 			}
-			ImGui::Text("Reference: %s", FContext.reference ? "ready" : "not computed");
-			ImGui::Text("Pixels: %s", Manager.Completed() ? "complete" : "computing");
-			ImGui::Text("Threads: %zu", size_t(FContext.ThreadCount));
-			if (ImGui::Button("Cancel")) FContext.CancelAll();
+			ImGui::Text("%s: %s", Tr("Reference"), Tr(FContext.reference ? "ready" : "not computed"));
+			ImGui::Text("%s: %s", Tr("Pixels"), Tr(Manager.Completed() ? "complete" : "computing"));
+			ImGui::Text("%s: %zu", Tr("Threads"), size_t(FContext.ThreadCount));
+			if (ImGui::Button(Tr("Cancel"))) FContext.CancelAll();
 		}
 		ImGui::End();
 	}
 
 	if (UI.ShowFeature && FContext.Feature) {
-		if (ImGui::Begin("Feature", &UI.ShowFeature, ImGuiWindowFlags_AlwaysAutoResize)) {
+		if (ImGui::Begin(Tr("Feature"), &UI.ShowFeature, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::TextUnformatted(Narrow(FContext.Feature->Name()).c_str());
 			ImGui::Separator();
 			ImGui::TextUnformatted(Narrow(FContext.Feature->Information()).c_str());
 			ImGui::Separator();
-			if (ImGui::Button("Go to feature")) {
+			if (ImGui::Button(Tr("Go to feature"))) {
 				HRReal X, Y;
 				FContext.Feature->GetCoordinate(X, Y);
 				FContext.SetLocation({ X, Y }, 128, FContext.CurrentLocation.HalfH / 8);
@@ -642,11 +682,11 @@ void DrawDialogs() {
 	if (UI.ShowAbout) {
 		ImGui::SetNextWindowPos(ImVec2(820, 80), ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(740, 500), ImGuiCond_Appearing);
-		if (ImGui::Begin("About Imagina", &UI.ShowAbout)) {
-			ImGui::TextUnformatted("Imagina - fast fractal renderer & explorer");
+		if (ImGui::Begin(Tr("About Imagina"), &UI.ShowAbout)) {
+			ImGui::TextUnformatted(Tr("Imagina - fast fractal renderer & explorer"));
 			ImGui::TextUnformatted("Modified version (2026): zoom sequence export with lossless raw map files.");
 			ImGui::Separator();
-			ImGui::TextUnformatted("This build uses the SDL3 + Dear ImGui front-end.");
+			ImGui::TextUnformatted(Tr("This build uses the SDL3 + Dear ImGui front-end."));
 			ImGui::Spacing();
 			ImGui::Separator();
 			ImGui::BeginChild("Licence", ImVec2(0, 0), ImGuiChildFlags_Borders);
@@ -889,6 +929,7 @@ int main(int argc, char **argv) {
 	const char *SavePath = nullptr;
 	bool ShowAllWindows = false;
 	bool Stress = false;
+	bool LanguageGiven = false;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) RunFrames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--screenshot") && i + 1 < argc) ScreenshotPath = argv[++i];
@@ -896,6 +937,16 @@ int main(int argc, char **argv) {
 		else if (!strcmp(argv[i], "--save") && i + 1 < argc) SavePath = argv[++i];
 		else if (!strcmp(argv[i], "--windows")) ShowAllWindows = true;
 		else if (!strcmp(argv[i], "--stress")) Stress = true;
+		else if (!strcmp(argv[i], "--lang") && i + 1 < argc) {
+			Language Chosen;
+			if (!LanguageFromCode(argv[++i], Chosen)) {
+				fprintf(stderr, "unknown language '%s' (use en or zh-CN)", argv[i]);
+				fputc(10, stderr);
+				return 2;
+			}
+			SetLanguage(Chosen);
+			LanguageGiven = true;
+		}
 	}
 
 #ifdef _WIN32
@@ -960,6 +1011,8 @@ int main(int argc, char **argv) {
 	ImGuiIO &IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui::StyleColorsDark();
+	if (!LanguageGiven) SetLanguage(DetectSystemLanguage());
+	LoadFont(IO);
 	ImGui_ImplSDL3_InitForOpenGL(Window, GLContext);
 	ImGui_ImplOpenGL3_Init("#version 150");
 

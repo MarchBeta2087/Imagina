@@ -197,6 +197,7 @@ set(ImaginaCoreSources
 	src/Global.cpp
 	src/HInfLAEvaluator.cpp
 	src/JitEvaluator.cpp
+	src/Language.cpp
 	src/PixelManager.cpp
 	src/RawMapCodec.cpp
 	src/Render.cpp

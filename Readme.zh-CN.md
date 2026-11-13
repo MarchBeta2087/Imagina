@@ -186,6 +186,9 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
   `--open <file>`、`--save <file>`（按扩展名决定格式）、`--windows`（打开全部对话框）
   和 `--stress`（每帧缩放），因此渲染、文件格式和界面都能在没有人工点击的情况下测试：
 
+  `--lang en|zh-CN` 选择界面语言（不给时跟随系统语言）；中文界面需要的 CJK 字体不随
+  仓库分发，见 [fonts/README.md](fonts/README.md)。
+
   ```
   ./build/Imagina.exe --frames 90 --screenshot shot.bmp
   ./build/Imagina.exe --windows --frames 30 --screenshot ui.bmp
