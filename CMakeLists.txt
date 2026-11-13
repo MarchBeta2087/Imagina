@@ -96,6 +96,23 @@ endif()
 # the names of the bundled lib/ directory that only the Visual Studio layout uses.
 list(APPEND CMAKE_INCLUDE_PATH ${INCLUDE_PATH})
 list(APPEND CMAKE_LIBRARY_PATH ${LIBRARY_PATH})
+
+# The Win32 front-end includes GL/glext.h and GL/wglext.h: the Windows SDK has
+# gl.h (OpenGL 1.1) only.  vcpkg's opengl-registry port provides them; a build
+# with the include/lib layout next to this file needs the download, and finding
+# out here is much cheaper than in the middle of the build.
+if(WIN32 AND BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
+	find_path(IMAGINA_GLEXT_DIR NAMES GL/glext.h glext.h)
+	if(NOT IMAGINA_GLEXT_DIR)
+		message(FATAL_ERROR
+			"GL/glext.h was not found.  The Win32 front-end needs the Khronos "
+			"OpenGL headers, which the Windows SDK does not ship: "
+			"run tools/fetch-headers.ps1 (or tools/fetch-headers.sh) to download them "
+			"into include/, or build with vcpkg (VCPKG_ROOT set), whose "
+			"opengl-registry port provides them, or point -DINCLUDE_PATH at a "
+			"directory that has GL/glext.h.")
+	endif()
+endif()
 find_package(ZLIB QUIET)
 find_package(PNG QUIET)
 if(ZLIB_FOUND)
