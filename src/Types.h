@@ -117,7 +117,9 @@ class ReservedMemoryArray {
 
 	void Commit() {
 		if (CommittedSize + CommitSize > ReservedSize) throw "";
-		PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, CommitSize);
+		// A failed commit used to be ignored, and the caller then wrote into
+		// reserved-but-uncommitted memory, which faults far away from here.
+		if (!PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, CommitSize)) throw "";
 		CommittedSize += CommitSize;
 		Capacity = CommittedSize / sizeof(T);
 	}
@@ -163,7 +165,7 @@ public:
 		if (NewSize > Capacity) {
 			size_t NewCommittedSize = (NewSize * sizeof(T) + CommitSize - 1) & ~(CommitSize - 1); // i * sizeof(complex) round up to nearest multiple of CommitSize
 			if (NewCommittedSize > ReservedSize) throw "";
-			PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, NewCommittedSize - CommittedSize);
+			if (!PlatformCommitMemory(((uint8_t *)Data) + CommittedSize, NewCommittedSize - CommittedSize)) throw "";
 			CommittedSize = NewCommittedSize;
 			Capacity = CommittedSize / sizeof(T);
 		}
