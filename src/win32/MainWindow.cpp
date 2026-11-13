@@ -1390,7 +1390,9 @@ LRESULT CALLBACK WindowProcess(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lP
 				SizeChanged = true;
 			} else {
 				ResizeViewport(WindowWidth, WindowHeight);
-				if (Global::ImageSizeFollowWindowSize) {
+				// A running export owns the resolution (it sets the size of the key
+				// frames), so following the window would resize the frames.
+				if (Global::ImageSizeFollowWindowSize && !Session.Active) {
 					FContext.SetResolution(WindowWidth, WindowHeight);
 				}
 			}

@@ -614,6 +614,7 @@ bool ZoomExportSaveFrame() {
 	const ExportFrame &Frame = Session.Frames[Session.Cursor];
 	std::wstring Path = FramePath(Frame.Index);
 
+
 	std::vector<float> Pixels;
 	int32_t Width = 0, Height = 0;
 	if (!GetRawPixelData(Pixels, Width, Height)) {

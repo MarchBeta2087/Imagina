@@ -881,7 +881,9 @@ void ResizeWindow(int32_t Width, int32_t Height) {
 	WindowWidth = size_t(Width);
 	WindowHeight = size_t(Height);
 	ResizeViewport(Width, Height);
-	if (Global::ImageSizeFollowWindowSize) FContext.SetResolution(Width, Height);
+	// A running export owns the resolution (it sets the size of the key frames), so
+	// following the window would change the size of the frames mid-export.
+	if (Global::ImageSizeFollowWindowSize && !Session.Active) FContext.SetResolution(Width, Height);
 	Global::Redraw = true;
 }
 
