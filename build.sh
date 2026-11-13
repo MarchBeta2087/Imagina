@@ -30,6 +30,7 @@ Options:
                                 Build type (default: Release)
   --build-dir <dir>             Build directory (default: build)
   --generator <name>            CMake generator (default: Ninja if available)
+  --frontend <win32|sdl>        Window toolkit (default: win32 on Windows, sdl elsewhere)
   --gui                         Require the window application (Windows only)
   --no-gui                      Skip the window application
   --test                        Also build the raw map codec test
@@ -42,6 +43,7 @@ EOF
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 compiler=auto
+frontend=
 config=Release
 build_dir="$source_dir/build"
 generator=
@@ -61,6 +63,8 @@ while [ $# -gt 0 ]; do
 		--build-dir=*)   build_dir=${1#*=}; shift ;;
 		--generator)     generator=${2:?--generator needs a value}; shift 2 ;;
 		--generator=*)   generator=${1#*=}; shift ;;
+		--frontend)      frontend=${2:?--frontend needs a value}; shift 2 ;;
+		--frontend=*)    frontend=${1#*=}; shift ;;
 		--gui)           want_gui=ON; shift ;;
 		--no-gui)        want_gui=OFF; shift ;;
 		--test)          want_test=ON; shift ;;
@@ -110,13 +114,28 @@ case "$(uname -s)" in
 		;;
 esac
 
+if [ -z "$frontend" ]; then
+	if [ "$on_windows" = 1 ]; then frontend=win32; else frontend=sdl; fi
+fi
+case "$frontend" in
+	win32|sdl) ;;
+	*) echo "Unsupported front-end '$frontend' (use win32 or sdl)." >&2; exit 2 ;;
+esac
+
+if [ "$frontend" = sdl ]; then
+	# The SDL front-end builds everywhere.
+	:
+elif [ "$on_windows" = 0 ]; then
+	echo "The Win32 front-end needs Windows; use --frontend sdl." >&2
+	exit 2
+fi
+
 if [ "$want_gui" = auto ]; then
 	if [ "$on_windows" = 1 ]; then want_gui=ON; else want_gui=OFF; fi
 fi
-if [ "$want_gui" = ON ] && [ "$on_windows" = 0 ]; then
-	echo "The Imagina window application uses the Win32 API, wgl and a .rc resource," >&2
-	echo "so it cannot be built on $(uname -s).  Use --no-gui to build the portable" >&2
-	echo "parts (the raw map codec test) instead, with --test." >&2
+if [ "$want_gui" = ON ] && [ "$frontend" = win32 ] && [ "$on_windows" = 0 ]; then
+	echo "The Win32 front-end uses the Win32 API, wgl and a .rc resource, so it cannot" >&2
+	echo "be built on $(uname -s).  Use --frontend sdl (the default) instead." >&2
 	exit 2
 fi
 if [ "$want_gui" = OFF ] && [ "$want_test" = OFF ]; then
@@ -190,6 +209,7 @@ cmake_args=(
 	-DMPIR_USE_DLL=OFF
 	"-DBUILD_CODEC_TEST=$want_test"
 	"-DBUILD_GUI=$want_gui"
+	"-DIMAGINA_FRONTEND=$frontend"
 	"-DCMAKE_C_COMPILER=$cc"
 	"-DCMAKE_CXX_COMPILER=$cxx"
 )

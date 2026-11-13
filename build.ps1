@@ -45,6 +45,9 @@
 param(
 	[ValidateSet("auto", "msvc", "clang", "clang-cl", "gcc")]
 	[string]$Compiler = "auto",
+	# Window toolkit: the Win32 one (default on Windows) or SDL3 + Dear ImGui.
+	[ValidateSet("win32", "sdl")]
+	[string]$Frontend = "win32",
 	[ValidateSet("Debug", "Release", "RelWithDebInfo", "MinSizeRel")]
 	[string]$Configuration = "Release",
 	[switch]$Clean,
@@ -181,7 +184,8 @@ $configureArgs = @(
 	"-DCMAKE_BUILD_TYPE=$Configuration",
 	"-DMPIR_USE_DLL=OFF",
 	"-DBUILD_CODEC_TEST=$(if ($Test) { 'ON' } else { 'OFF' })",
-	"-DBUILD_GUI=$(if ($NoGui) { 'OFF' } else { 'ON' })"
+	"-DBUILD_GUI=$(if ($NoGui) { 'OFF' } else { 'ON' })",
+	"-DIMAGINA_FRONTEND=$Frontend"
 )
 
 if (!$NoVcpkg -and $env:VCPKG_ROOT -and (Test-Path (Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"))) {

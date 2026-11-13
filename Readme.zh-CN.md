@@ -155,6 +155,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 inc
 
 ```
 ./build.sh --compiler clang --test
+./build.sh --frontend sdl --compiler clang
 ./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
 ```
 

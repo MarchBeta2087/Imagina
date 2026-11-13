@@ -166,6 +166,7 @@ job does.
 
 ```
 ./build.sh --compiler clang --test
+./build.sh --frontend sdl --compiler clang
 ./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
 ```
 
