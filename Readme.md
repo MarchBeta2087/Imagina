@@ -133,6 +133,18 @@ Anything that can be fetched (glm, SDL3, Dear ImGui) is fetched when it is not
 installed; the tags are pinned in `CMakeLists.txt`
 (`IMAGINA_GLM_TAG`, `IMAGINA_SDL3_TAG`, `IMAGINA_IMGUI_TAG`).
 
+The Windows SDK has `gl.h` (OpenGL 1.1) but no `glext.h`/`wglext.h`, so a Win32
+build without vcpkg needs the three Khronos headers in `include/`:
+
+```
+> powershell -ExecutionPolicy Bypass -File tools/fetch-headers.ps1
+> .\build.ps1
+```
+
+`tools/fetch-headers.sh` does the same on Linux/MSYS2.  With vcpkg they come from
+the `opengl-registry` port, and the configure step stops early with this hint when
+they cannot be found.
+
 ### CMake variables
 
 * `IMAGINA_DEPS_DIR` Directory with `include/` and `lib/` holding the bundled

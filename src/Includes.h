@@ -29,17 +29,22 @@
 // The extension entry points are loaded at run time (GLUtils.cpp), so only the
 // PFN...PROC typedefs are needed here, never the prototypes.
 #if defined(_WIN32)
-// The Windows build ships its own copies next to the other dependencies, the
-// MinGW-w64 toolchains provide them as GL/glext.h and GL/wglext.h.
+// The headers come from vcpkg's opengl-registry port, from include/ (see
+// tools/fetch-headers.ps1) or from the MinGW-w64 toolchain; the Windows SDK only
+// ships gl.h.
 #if __has_include(<glext.h>)
 #include <glext.h>
-#else
+#elif __has_include(<GL/glext.h>)
 #include <GL/glext.h>
+#else
+#error "GL/glext.h is missing: run tools/fetch-headers.ps1 (or tools/fetch-headers.sh) to download the Khronos headers into include/, or build with vcpkg, where the opengl-registry port provides them."
 #endif
 #if __has_include(<wglext.h>)
 #include <wglext.h>
-#else
+#elif __has_include(<GL/wglext.h>)
 #include <GL/wglext.h>
+#else
+#error "GL/wglext.h is missing: run tools/fetch-headers.ps1 (or tools/fetch-headers.sh) to download the Khronos headers into include/, or build with vcpkg, where the opengl-registry port provides them."
 #endif
 #elif __has_include(<GL/glext.h>)
 #include <GL/glext.h>
