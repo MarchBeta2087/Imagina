@@ -8,6 +8,7 @@
 
 #include "Includes.h"
 #include "File.h"
+#include "RawMapCodec.h"
 
 #include <SDL3/SDL.h>
 #ifndef _WIN32
@@ -849,7 +850,39 @@ bool HandleEvent(const SDL_Event &Event) {
 
 // --frames <n>      quit after n frames (0 = run until the window is closed)
 // --screenshot <f>  write the last frame to <f> as a BMP (used for testing)
+// Imagina --decode <frame.rawz> [<frame.raw>]
+// The same command the Win32 front-end has: expand a compressed raw map into the
+// plain layout "Save raw pixel data" writes, without opening a window (so it
+// works on a machine without a display and from scripts).
+static int DecodeRawMap(int argc, char **argv) {
+	if (argc < 3) {
+		fprintf(stderr, "usage: Imagina --decode <frame.rawz> [<frame.raw>]\n");
+		return 1;
+	}
+
+	std::filesystem::path Input(argv[2]);
+	std::filesystem::path Output = argc >= 4 ? std::filesystem::path(argv[3]) : Input;
+	if (argc < 4) Output.replace_extension(".raw");
+
+	std::vector<float> Values;
+	uint32_t Width = 0, Height = 0;
+	std::string Error;
+	if (!RawMapCodec::ReadFile(Input.wstring(), Values, Width, Height, Error)) {
+		fprintf(stderr, "cannot expand %s: %s\n", Input.string().c_str(), Error.c_str());
+		return 1;
+	}
+	if (!RawMapCodec::WriteRawFile(Output.wstring(), Values, Width, Height, Error)) {
+		fprintf(stderr, "cannot write %s: %s\n", Output.string().c_str(), Error.c_str());
+		return 2;
+	}
+	fprintf(stderr, "%s: %u x %u float32 values written to %s\n", Input.string().c_str(), Width, Height,
+		Output.string().c_str());
+	return 0;
+}
+
 int main(int argc, char **argv) {
+	if (argc >= 2 && !strcmp(argv[1], "--decode")) return DecodeRawMap(argc, argv);
+
 	int RunFrames = 0;
 	const char *ScreenshotPath = nullptr;
 	const char *OpenPath = nullptr;
