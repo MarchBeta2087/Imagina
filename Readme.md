@@ -152,6 +152,7 @@ picks the compiler (-Compiler msvc|gcc|clang|clang-cl|auto):
 powershell -ExecutionPolicy Bypass -File build.ps1                  # MSVC (detected)
 powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
 powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # old include\lib\ layout
+powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui front-end
 ```
 
 Without vcpkg (or with `-NoVcpkg`) the dependencies are taken from `include\` and
