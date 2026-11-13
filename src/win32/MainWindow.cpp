@@ -452,51 +452,7 @@ INT_PTR SetFormulaProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lPara
 	return 0;
 }
 
-std::string ZoomToString(ZoomType type, HRReal halfH, HRReal OriginalHalfH) {
-	char Buffer[32];
-	switch (type) {
-		case ZoomType::Height: {
-			gmp_sprintf(Buffer, "%.12Fg", (halfH * 2.0_hr).to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::HalfHeight: {
-			gmp_sprintf(Buffer, "%.12Fg", halfH.to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::Magnification: {
-			gmp_sprintf(Buffer, "%.12Fg", (OriginalHalfH / halfH).to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::Depth: {
-			sprintf_s(Buffer, "%.15g", log2(OriginalHalfH / halfH));
-			break;
-		}
-	}
-	return Buffer;
-}
 
-HRReal ParseZoom(ZoomType type, std::string_view string, HRReal OriginalHalfH) {
-	HRReal Zoom = mpf_class(string.data(), 52);
-
-	switch (type) {
-		case ZoomType::Height: {
-			Zoom *= 0.5;
-			break;
-		}
-		case ZoomType::HalfHeight: {
-			break;
-		}
-		case ZoomType::Magnification: {
-			Zoom = OriginalHalfH / Zoom;
-			break;
-		}
-		case ZoomType::Depth: {
-			Zoom = OriginalHalfH / pow2(SRReal(Zoom));
-			break;
-		}
-	}
-	return Zoom;
-}
 
 INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	static int ItemIndex = 2;
