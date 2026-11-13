@@ -26,6 +26,10 @@ void PlatformPresent() {
 	SwapBuffers(MainDC);
 }
 
+void PlatformKeepDisplayOn(bool KeepOn) {
+	SetThreadExecutionState(KeepOn ? ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED : ES_CONTINUOUS);
+}
+
 void SetWorkerPriority() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 }

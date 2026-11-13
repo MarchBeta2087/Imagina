@@ -71,6 +71,20 @@ struct ExportSession {
 	std::chrono::steady_clock::time_point SessionStart, FrameStart;
 	double LastFrameSeconds = 0.0;
 	bool HaveTiming = false;
+	// Set when the last frame was written, so that a front-end can say so.
+	bool Finished = false;
+	// Why the last export stopped, empty when it finished normally.
+	std::string Error;
+
+	// The view to go back to when the export ends.
+	struct SavedViewState {
+		HPReal CenterX, CenterY;
+		RelLocation Location;
+		uint64_t Precision = 64;
+		size_t ImageWidth = 0, ImageHeight = 0;
+		size_t ItLim = 0;
+		bool Valid = false;
+	} SavedView;
 };
 
 extern ExportSession Session;
@@ -108,6 +122,48 @@ bool ReadRecordFile();
 // Works out the iteration limit of every key frame in one walk over the orbit of
 // the centre (see the comment in ZoomExport.cpp).
 void ComputeFrameIterations();
+
+// --- driving an export ------------------------------------------------------
+// While an export runs the front-end calls ZoomExportTick() from its own loop or
+// timer; the export stops the display from sleeping and keeps the computation to
+// itself (no texture uploads).
+
+enum class ZoomExportPhase {
+	Reference,
+	Pixels,
+	Prepare,
+};
+
+bool ZoomExportFrameComplete();
+ZoomExportPhase ZoomExportCurrentPhase(SRReal &Fraction);
+
+// Remembers the view that is restored when the export ends.
+void ZoomExportCaptureView();
+
+// Makes frame Index the view that is being computed.
+bool ZoomExportStartFrame(size_t Index);
+
+// Stores the frame which is being computed as <record name>-<index>.<rawz>.
+bool ZoomExportSaveFrame();
+
+// Sets the session up for a new sequence from the displayed view (which is also
+// saved as the location file the record names) or from an existing record.
+bool ZoomExportPrepareNew(const std::filesystem::path &RecordPath, size_t Width, size_t Height, double Step,
+	ZoomType TargetType, const std::string &TargetText, std::string &Error);
+bool ZoomExportPrepareResume(const std::filesystem::path &RecordPath, std::string &Error);
+
+// Starts (or continues) the session: computes the iteration limits, remembers the
+// view and starts the first pending frame.
+bool ZoomExportBegin();
+
+// One step of a running export; returns false when it has finished or stopped.
+bool ZoomExportTick();
+
+// Stops the export and restores the view.
+void ZoomExportEnd();
+
+// The progress text ("Frame 2/5, ... pixels 42%") and its fraction.
+std::string ZoomExportStatus(SRReal &Fraction);
 
 // Writes the per frame iteration limits of a record, for
 // "Imagina --period <record.imz> [<out.txt>]".
