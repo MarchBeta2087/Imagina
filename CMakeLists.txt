@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 3.16)
 
-project ("Imagina" LANGUAGES C CXX)
+# The version of the program; it appears in --version, the About dialog and the
+# Windows version resource.  0.x until the SDL front-end reaches parity with the
+# Win32 one (see the Readme, "Versioning").
+project ("Imagina" VERSION 0.1.0 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
@@ -149,6 +152,7 @@ endif()
 # flags below.
 function(ImaginaApplyCompilerOptions Target)
 	set_property(TARGET ${Target} PROPERTY CXX_STANDARD 20)
+	target_compile_definitions(${Target} PRIVATE "IMAGINA_VERSION=\"${PROJECT_VERSION}\"")
 	set_property(TARGET ${Target} PROPERTY CXX_STANDARD_REQUIRED ON)
 	if(MSVC)
 		target_compile_options(${Target} PRIVATE /W3 /GR /EHsc /bigobj ${Imagina_ArchFlags})
@@ -235,6 +239,10 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		"${CMAKE_CURRENT_SOURCE_DIR}")
 	target_precompile_headers (Imagina PRIVATE "src/Includes.h")
 	set_source_files_properties("src/win32/Resource.rc" PROPERTIES LANGUAGE RC)
+	# The version numbers are generated into a header instead of being passed with
+	# -D: windres and rc.exe disagree about quoting string definitions.
+	configure_file("src/win32/Version.rc.in" "${CMAKE_CURRENT_BINARY_DIR}/Version.rc.h" @ONLY)
+	target_include_directories(Imagina PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 	target_compile_definitions(Imagina PRIVATE UNICODE)
 
 	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
@@ -277,7 +285,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# linker's own default manifest cannot be combined with the one in
 		# Resource.rc.
 		target_link_options(Imagina PRIVATE -municode)
-		set_source_files_properties("src/win32/Resource.rc" PROPERTIES COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
+		set_property(SOURCE "src/win32/Resource.rc" APPEND PROPERTY COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
 endif()
 

@@ -204,6 +204,18 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 `master` 只保留经过审查的代码；日常开发在 `dev` 分支进行，通过 Pull Request 合并回
 `master`。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 版本号
+
+版本号只有一处来源：`CMakeLists.txt` 里的 `project(... VERSION ...)`；`--version`、
+「关于」对话框和 Windows 版本资源都由它生成（`vcpkg.json` 里为 manifest 重复了一次）。
+目前是 `0.1.0`，在 SDL 前端与 Win32 前端功能对齐之前保持 `0.x`。发布使用
+`vMAJOR.MINOR.PATCH` 形式的标签。
+
+```
+$ ./build/Imagina --version
+Imagina 0.1.0 (SDL front-end)
+```
+
 ## 许可证
 
 GNU Affero General Public License v3.0，见 [LICENSE.txt](LICENSE.txt)。

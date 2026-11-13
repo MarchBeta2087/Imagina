@@ -52,6 +52,14 @@ int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR
 		LocalFree(argv);
 		return Result;
 	}
+	// Imagina.exe --version
+	if (argc >= 2 && _wcsicmp(argv[1], L"--version") == 0) {
+		printf("Imagina %s (Win32 front-end)", IMAGINA_VERSION);
+		fputc(10, stdout);
+		LocalFree(argv);
+		return 0;
+	}
+
 	// Imagina.exe --period <record.imz> [<out.txt>]
 	// Writes the iterations every key frame of a record would be computed with,
 	// so that the per frame iteration limit can be inspected without exporting.

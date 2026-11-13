@@ -221,6 +221,19 @@ Notes:
 `master` only contains reviewed work; development happens on `dev` and is merged
 back with a pull request.  See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Versioning
+
+The version lives in one place, the `project(... VERSION ...)` command in
+`CMakeLists.txt`; `--version`, the About dialog and the Windows version resource
+all come from it (`vcpkg.json` repeats it for the manifest).  It is `0.1.0` now and
+stays `0.x` until the SDL front-end reaches parity with the Win32 one.  Releases use
+`vMAJOR.MINOR.PATCH` tags.
+
+```
+$ ./build/Imagina --version
+Imagina 0.1.0 (SDL front-end)
+```
+
 ## License
 
 GNU Affero General Public License v3.0, see [LICENSE.txt](LICENSE.txt).

@@ -24,6 +24,8 @@ mono_crash.*
 x64/
 x86/
 [Ww][Ii][Nn]32/
+# ... except our own source directory, which is not a build output.
+!src/win32/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
