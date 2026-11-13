@@ -141,7 +141,7 @@ cmake --build --preset windows-msvc-sdl --parallel
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1                  # 自动检测 MSVC
 powershell -ExecutionPolicy Bypass -File build.ps1 -Compiler gcc    # MinGW-w64 GCC
-powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 include\`/`lib\` 布局
+powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 `include\`/`lib\` 布局
 powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui 前端
 ```
 
