@@ -347,6 +347,10 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# The .rc file already carries a manifest, and the static MPIR build
 		# produces a duplicate PDB reference warning.
 		target_link_options(Imagina PRIVATE /MANIFEST:NO /IGNORE:4099)
+		# Debug information in the release build: the crash report next to the
+		# executable is only readable when a PDB is there to name the frames.
+		target_compile_options(Imagina PRIVATE /Zi)
+		target_link_options(Imagina PRIVATE /DEBUG)
 	else()
 		# wWinMain needs the unicode entry point under MinGW-w64, and the
 		# linker's own default manifest cannot be combined with the one in
