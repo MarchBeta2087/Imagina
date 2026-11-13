@@ -191,6 +191,7 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
   ./build/Imagina.exe --windows --frames 30 --screenshot ui.bmp
   ./build/Imagina.exe --open zoom.imt --save zoom.im     # .im/.imt/.kfr/.raw/.png
   ./build/Imagina.exe --open zoom.im --frames 90 --screenshot shot.bmp
+  ./build/Imagina.exe --decode frame.rawz frame.raw      # 无需窗口
   ```
 
 ## 开发流程

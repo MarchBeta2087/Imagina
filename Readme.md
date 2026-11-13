@@ -207,6 +207,7 @@ Notes:
   ./build/Imagina.exe --windows --frames 30 --screenshot ui.bmp
   ./build/Imagina.exe --open zoom.imt --save zoom.im     # .im/.imt/.kfr/.raw/.png
   ./build/Imagina.exe --open zoom.im --frames 90 --screenshot shot.bmp
+  ./build/Imagina.exe --decode frame.rawz frame.raw      # no window needed
   ```
 
 ## Development
