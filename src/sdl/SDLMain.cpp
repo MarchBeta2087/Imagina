@@ -194,7 +194,7 @@ Language DetectLanguageFromSdl() {
 // The CJK font from fonts/ (see fonts/README.md).  Dear ImGui's built-in font has
 // no CJK glyphs, so the UI falls back to it with a warning when the file is
 // missing instead of refusing to start.
-bool LoadFont(ImGuiIO &IO) {
+bool LoadFont(ImGuiIO &IO, float Size) {
 	const char *Name = "SarasaMonoSC-Regular.ttf";
 	std::vector<std::filesystem::path> Candidates;
 
@@ -215,7 +215,7 @@ bool LoadFont(ImGuiIO &IO) {
 		ImFontConfig Config;
 		Config.OversampleH = 2;
 		Config.OversampleV = 1;
-		if (IO.Fonts->AddFontFromFileTTF(Candidate.string().c_str(), 18.0f, &Config)) {
+		if (IO.Fonts->AddFontFromFileTTF(Candidate.string().c_str(), Size, &Config)) {
 			fprintf(stderr, "using the font %s", Candidate.string().c_str());
 			fputc(10, stderr);
 			return true;
@@ -540,11 +540,29 @@ void DrawMenuBar() {
 	}
 
 	if (ImGui::BeginMenu(Tr("Help"))) {
+		if (ImGui::BeginMenu(Tr("Language"))) {
+			if (ImGui::MenuItem(Tr("English"), nullptr, CurrentLanguage() == Language::English)) SetLanguage(Language::English);
+			if (ImGui::MenuItem(Tr("Chinese (Simplified)"), nullptr, CurrentLanguage() == Language::Chinese)) SetLanguage(Language::Chinese);
+			ImGui::EndMenu();
+		}
+		ImGui::Separator();
 		if (ImGui::MenuItem(Tr("About / License..."))) {
 			if (!UI.LicenceLoaded) {
-				std::ifstream File(IMAGINA_LICENSE_PATH);
+				// An installed copy carries LICENSE.txt next to the executable; a
+				// build tree falls back to the file the configure step found.
 				std::stringstream Contents;
-				Contents << File.rdbuf();
+				bool Loaded = false;
+				if (const char *Base = SDL_GetBasePath()) {
+					std::ifstream File(std::filesystem::path(Base) / "LICENSE.txt");
+					if (File) {
+						Contents << File.rdbuf();
+						Loaded = true;
+					}
+				}
+				if (!Loaded) {
+					std::ifstream File(IMAGINA_LICENSE_PATH);
+					Contents << File.rdbuf();
+				}
 				UI.Licence = Contents.str();
 				UI.LicenceLoaded = true;
 			}
@@ -888,6 +906,22 @@ void ResizeWindow(int32_t Width, int32_t Height) {
 	Global::Redraw = true;
 }
 
+// The ImGui font is 18 pixels at 100%, and the display scale multiplies it.
+constexpr float BaseFontSize = 18.0f;
+float AppScale = 1.0f;
+
+// Rebuilds the font atlas after the window moved to a display with another scale.
+void ReloadFonts(float Scale) {
+	ImGuiIO &IO = ImGui::GetIO();
+	ImGui_ImplOpenGL3_DestroyDeviceObjects();
+	IO.Fonts->Clear();
+	LoadFont(IO, BaseFontSize * Scale);
+	ImGui::GetStyle().ScaleAllSizes(Scale / AppScale);
+	AppScale = Scale;
+	ImGui_ImplOpenGL3_CreateDeviceObjects();
+	Global::Redraw = true;
+}
+
 bool HandleEvent(const SDL_Event &Event) {
 	ImGuiIO &IO = ImGui::GetIO();
 
@@ -898,6 +932,12 @@ bool HandleEvent(const SDL_Event &Event) {
 		case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 			ResizeWindow(Event.window.data1, Event.window.data2);
 			break;
+
+		case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED: {
+			float Scale = SDL_GetWindowDisplayScale(Window);
+			if (Scale > 0.0f && Scale != AppScale) ReloadFonts(Scale);
+			break;
+		}
 
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			if (Event.button.button == SDL_BUTTON_LEFT && !IO.WantCaptureMouse) {
@@ -1148,8 +1188,13 @@ int main(int argc, char **argv) {
 	ImGuiIO &IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui::StyleColorsDark();
+	// HiDPI: the font is rasterised at the display scale and the style follows it,
+	// otherwise the UI is half the size it should be on a scaled display.
+	AppScale = SDL_GetWindowDisplayScale(Window);
+	if (!(AppScale > 0.0f)) AppScale = 1.0f;
+	ImGui::GetStyle().ScaleAllSizes(AppScale);
 	if (!LanguageGiven) SetLanguage(DetectLanguageFromSdl());
-	LoadFont(IO);
+	LoadFont(IO, BaseFontSize * AppScale);
 	ImGui_ImplSDL3_InitForOpenGL(Window, GLContext);
 	ImGui_ImplOpenGL3_Init("#version 150");
 

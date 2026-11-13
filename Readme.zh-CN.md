@@ -13,6 +13,7 @@ _简体中文 | [English](Readme.md)_
 
 - [操作方式](#操作方式)
 - [缩放序列导出](#缩放序列导出)
+- [语言与字体](#语言与字体)
 - [仓库结构](#仓库结构)
 - [构建](#构建)
 - [前端](#前端)
@@ -45,6 +46,30 @@ _简体中文 | [English](Readme.md)_
 关键帧的迭代上限跟随其尺度：从中心轨道（视图的周期）读出来，这样较宽的关键帧不会把
 最深一帧的上限全部花在集合内部的像素上。某次导出会使用的上限可以用
 `Imagina.exe --period <record.imz>` 查看。
+
+## 语言与字体
+
+SDL 前端支持英文与简体中文。`--lang en|zh-CN` 指定语言；不给时按系统语言
+（`SDL_GetPreferredLocales`）选择，运行时也可以在「Help」→「Language」里切换。
+字符串都在 `src/Language.cpp`：`Tr("英文原文")` 查表，查不到就回退英文，所以缺失
+条目不会变成空白标签。`tools/check-translations.py` 会在源码里用到的字符串没有对应
+条目时报错，CI 会运行它。
+
+中文需要带中日韩字形的字体。界面会依次在可执行文件旁、其下的 `fonts/`、工作目录里
+查找 `SarasaMonoSC-Regular.ttf`，找不到时回退内置字体并给出警告。字体文件是 Release
+资源（`deps-fonts-v1`，见 [fonts/README.md](fonts/README.md)），用
+`tools/fetch-fonts.ps1` 或 `tools/fetch-fonts.sh` 下载：
+
+```
+$ tools/fetch-fonts.sh
+$ ./Imagina --lang zh-CN
+```
+
+字体按 18 像素乘以显示缩放光栅化；窗口移到缩放比例不同的显示器时界面会重新缩放。
+
+`cmake --install <构建目录> --prefix <目录>` 会生成发布压缩包的布局：可执行文件、
+`LICENSE.txt`、两份 Readme、`CHANGELOG.md`，以及包含许可文件与（已下载的）TTF 的
+`fonts/` 目录。
 
 ## 仓库结构
 
@@ -209,12 +234,12 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 
 版本号只有一处来源：`CMakeLists.txt` 里的 `project(... VERSION ...)`；`--version`、
 「关于」对话框和 Windows 版本资源都由它生成（`vcpkg.json` 里为 manifest 重复了一次）。
-目前是 `0.2.0`，在 SDL 前端与 Win32 前端功能对齐之前保持 `0.x`。发布使用
-`vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在 [CHANGELOG.md](CHANGELOG.md)。
+目前是 `1.0.0`。发布使用 `vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在
+[CHANGELOG.md](CHANGELOG.md)。
 
 ```
 $ ./build/Imagina --version
-Imagina 0.2.0 (SDL front-end)
+Imagina 1.0.0 (SDL front-end)
 ```
 
 ## 许可证

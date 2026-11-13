@@ -1,5 +1,6 @@
 #include "PlatformDependent.h"
 #include "Platform.h"
+#include "Localise.h"
 #include "MainWindow.h"
 
 #if __has_include(<Windows.h>)
@@ -34,12 +35,15 @@ void SetWorkerPriority() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 }
 
+// The messages are UTF-8 (and may be Chinese), so they go to the wide message box.
 void ErrorMessage(const char *Message) {
-	MessageBoxA(nullptr, Message, nullptr, MB_TASKMODAL | MB_OK);
+	std::wstring Text = TrW(Message);
+	MessageBoxW(nullptr, Text.c_str(), nullptr, MB_TASKMODAL | MB_OK);
 }
 
 void ErrorMessage(const char *Title, const char *Message) {
-	MessageBoxA(nullptr, Message, Title, MB_TASKMODAL | MB_OK);
+	std::wstring Text = TrW(Message), Caption = TrW(Title);
+	MessageBoxW(nullptr, Text.c_str(), Caption.c_str(), MB_TASKMODAL | MB_OK);
 }
 
 namespace {

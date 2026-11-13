@@ -10,6 +10,40 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-13
+
+### Added / 新增
+
+- The UI language can be switched at run time from "Help" -> "Language" in both
+  front-ends, and `--lang en|zh-CN` still selects it at start-up.
+  两个前端都可以在运行时从「Help」→「Language」切换界面语言，启动时仍可用
+  `--lang en|zh-CN`。
+- The whole Win32 front-end is localised: menus, dialog boxes and message boxes
+  go through the same string table as the SDL front-end.
+  Win32 前端完成本地化：菜单、对话框和消息框都走与 SDL 前端相同的字符串表。
+- The export status line and the export errors are translatable format strings.
+  导出状态行与导出错误改为可翻译的格式串。
+- HiDPI: the ImGui font is rasterised at 18 px times the display scale, the style
+  is scaled with it, and both follow the window to a display with another scale.
+  HiDPI：ImGui 字体按 18 像素乘以显示缩放光栅化，样式随之缩放，窗口移到缩放比例
+  不同的显示器时两者都会跟随。
+- `tools/check-translations.py`: fails when a string passed to `Tr()`/`TrW()` has
+  no translation.  CI runs it and renders the UI in Chinese.
+  `tools/check-translations.py`：源码里用了 `Tr()`/`TrW()` 却没有翻译时报错。CI 会
+  运行它并渲染一次中文界面。
+- `cmake --install` produces the layout of the release archive: executable,
+  licence, Readmes, changelog, and `fonts/` with the licence and the font.
+  `cmake --install` 生成发布压缩包的布局：可执行文件、许可、Readme、更新日志，以及
+  含许可文件与字体的 `fonts/`。
+
+### Fixed / 修复
+
+- `ErrorMessage()` of the Win32 front-end shows UTF-8 text as Unicode instead of
+  asking the ANSI message box to interpret it.
+- The About window finds `LICENSE.txt` next to an installed executable, not only
+  at the path the configure step saw.
+
+
 ## [0.2.0] - 2026-11-13
 
 ### Added / 新增
@@ -83,6 +117,7 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v0.2.0...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...dev
+[1.0.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/MarchBeta2087/Imagina/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MarchBeta2087/Imagina/releases/tag/v0.1.0

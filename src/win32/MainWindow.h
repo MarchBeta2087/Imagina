@@ -59,6 +59,11 @@ enum class MenuID : UINT_PTR {
 	ResumeZoomSequence,
 
 	AboutLicense,
+
+	LanguageBegin,
+	LanguageEnglish = LanguageBegin,
+	LanguageChinese,
+	LanguageEnd = LanguageChinese,
 };
 
 

@@ -1,5 +1,7 @@
 #include "Includes.h"
 #include "MainWindow.h"
+#include "Localise.h"
+#include "Language.h"
 #include <CommCtrl.h>
 #include <fstream>
 #include <iomanip>
@@ -32,6 +34,7 @@ HMENU FractalType;
 HMENU AlgorithmMenu;
 HMENU Recompute;
 HMENU HelpMenu;
+HMENU LanguageMenu;
 
 HWND TasksDialog = nullptr;
 
@@ -68,12 +71,12 @@ bool InitPixelFormat(HDC hDC) {
 	pixelformat = ChoosePixelFormat(hDC, ppfd);
 
 	if (pixelformat == 0) {
-		MessageBox(nullptr, L"ChoosePixelFormat failed", L"Error", MB_OK);
+		MessageBoxW(nullptr, TrW("ChoosePixelFormat failed").c_str(), TrW("Error").c_str(), MB_OK);
 		return false;
 	}
 
 	if (SetPixelFormat(hDC, pixelformat, ppfd) == FALSE) {
-		MessageBox(nullptr, L"SetPixelFormat failed", L"Error", MB_OK);
+		MessageBoxW(nullptr, TrW("SetPixelFormat failed").c_str(), TrW("Error").c_str(), MB_OK);
 		return false;
 	}
 
@@ -98,6 +101,15 @@ void CreateMainWindow() {
 	AppendMenuW(MainMenu, MF_POPUP, (UINT_PTR)HelpMenu, L"Help");
 
 	AppendMenuW(HelpMenu, MF_STRING, (UINT_PTR)MenuID::AboutLicense, L"About / License...");
+
+	// Help -> Language.  The items are localised like every other menu item: the
+	// two language names are in the table in their own language.
+	LanguageMenu = CreatePopupMenu();
+	AppendMenuW(HelpMenu, MF_POPUP, (UINT_PTR)LanguageMenu, L"Language");
+	AppendMenuW(LanguageMenu, MF_STRING, (UINT_PTR)MenuID::LanguageEnglish, L"English");
+	AppendMenuW(LanguageMenu, MF_STRING, (UINT_PTR)MenuID::LanguageChinese, L"Chinese (Simplified)");
+	CheckMenuRadioItem(LanguageMenu, (UINT_PTR)MenuID::LanguageBegin, (UINT_PTR)MenuID::LanguageEnd,
+		(UINT_PTR)(CurrentLanguage() == Language::Chinese ? MenuID::LanguageChinese : MenuID::LanguageEnglish), MF_BYCOMMAND);
 
 	AppendMenuW(File, MF_STRING, (UINT_PTR)MenuID::Open, L"Open\tCtrl+O");
 	AppendMenuW(File, MF_STRING, (UINT_PTR)MenuID::Save, L"Save\tCtrl+S");
@@ -148,6 +160,9 @@ void CreateMainWindow() {
 	AppendMenuW(Recompute, MF_STRING, (UINT_PTR)MenuID::RecomputeReference, L"Reference");
 	AppendMenuW(Recompute, MF_STRING, (UINT_PTR)MenuID::RecomputePixel, L"Pixel");
 	AppendMenuW(Recompute, MF_STRING, (UINT_PTR)MenuID::RecomputeAll, L"All");
+
+	// Everything above is English; this turns it into the current language.
+	LocaliseMenu(MainMenu);
 
 
 
@@ -343,6 +358,7 @@ static const wchar_t AboutNotice[] =
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			// The version is prepended at run time so that the notice does not
 			// have to be spelled out again in CMake.
 			std::wstring VersionLine = L"Imagina " + std::wstring(IMAGINA_VERSION, IMAGINA_VERSION + strlen(IMAGINA_VERSION))
@@ -382,6 +398,7 @@ INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) 
 INT_PTR ReferenceSavingProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			HWND Slider = GetDlgItem(hWndDlg, IDC_QUALITY_SLIDER);
 
 			SendMessage(GetDlgItem(hWndDlg, IDC_INCLUDE_REFERENCE), BM_SETCHECK, (WPARAM)(Global::SaveReference ? BST_CHECKED : BST_UNCHECKED), (LPARAM)0);
@@ -419,6 +436,7 @@ INT_PTR ReferenceSavingProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*
 INT_PTR SetFormulaProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			char Buffer[32];
 			sprintf_s(Buffer, "%zu", Global::ItLim);
 
@@ -458,6 +476,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 	static int ItemIndex = 2;
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			HWND ComboBox = GetDlgItem(hWndDlg, IDC_COMBO1);
 
 			SendMessageA(ComboBox, (UINT)CB_ADDSTRING, 0, (LPARAM)"Height");
@@ -538,7 +557,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 							FContext.CenterCoordinate.X = std::move(PrevX);
 							FContext.CenterCoordinate.Y = std::move(PrevY);
 							delete[]Buffer;
-							MessageBoxA(hWndDlg, "Value invalid.", nullptr, MB_OK | MB_ICONERROR);
+							MessageBoxW(hWndDlg, TrW("Value invalid.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 							break;
 						}
 					}
@@ -560,6 +579,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 INT_PTR SetIterationLimitProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			char Buffer[32];
 			sprintf_s(Buffer, "%zu", Global::ItLim);
 
@@ -599,6 +619,7 @@ INT_PTR SetIterationLimitProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM 
 INT_PTR TransformProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			char buffer[32];
 			
 			SendMessage(GetDlgItem(hWndDlg, IDC_FLIP_IMAGINARY), BM_SETCHECK, (WPARAM)(Global::FlipImaginaryAxis ? BST_CHECKED : BST_UNCHECKED), (LPARAM)0);
@@ -632,10 +653,10 @@ INT_PTR TransformProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam
 
 						if (newStretchRatio == 0.0) throw std::invalid_argument("StretchRatio");
 					} catch (std::invalid_argument) {
-						MessageBoxA(hWndDlg, "Value invalid.", nullptr, MB_OK | MB_ICONERROR);
+						MessageBoxW(hWndDlg, TrW("Value invalid.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
 					} catch (std::out_of_range) {
-						MessageBoxA(hWndDlg, "Value out of range.", nullptr, MB_OK | MB_ICONERROR);
+						MessageBoxW(hWndDlg, TrW("Value out of range.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
 					}
 
@@ -687,6 +708,7 @@ INT_PTR SetImageSizeProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lPa
 	char Buffer[32];
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			CheckDlgButton(hWndDlg, IDC_FOLLOW_WINDOW_SIZE, Global::ImageSizeFollowWindowSize ? BST_CHECKED : BST_UNCHECKED);
 
 			sprintf_s(Buffer, "%zu", FContext.ImageWidth);
@@ -770,6 +792,7 @@ int n = 0;
 INT_PTR TasksProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			SetTimer(hWndDlg, 1, 100, nullptr);
 		}
 		[[fallthrough]];
@@ -945,6 +968,7 @@ INT_PTR FeatureFinderProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 	Evaluator::Feature *Feature = FContext.Feature;
 	switch (message) {
 		case WM_INITDIALOG: {
+			LocaliseWindow(hWndDlg);
 			Cancelling = false;
 			std::wstring_view name = Feature->Name();
 			std::wstring_view information = Feature->Information();
@@ -1043,10 +1067,10 @@ INT_PTR FeatureFinderProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 					try {
 						TargetRadius = CalculateTargetRadius(hWndDlg);
 					} catch (std::invalid_argument) {
-						MessageBoxA(hWndDlg, "Zoom target value invalid.", nullptr, MB_OK | MB_ICONERROR);
+						MessageBoxW(hWndDlg, TrW("Zoom target value invalid.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
 					} catch (std::out_of_range) {
-						MessageBoxA(hWndDlg, "Zoom target value out of range.", nullptr, MB_OK | MB_ICONERROR);
+						MessageBoxW(hWndDlg, TrW("Zoom target value out of range.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
 					}
 					Precision = -std::min<int64_t>(0, TargetRadius.Exponent) + 64;
@@ -1226,6 +1250,15 @@ LRESULT CALLBACK WindowProcess(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lP
 				}
 				case (UINT_PTR)MenuID::ResumeZoomSequence: {
 					ResumeZoomExport();
+					break;
+				}
+				case (UINT_PTR)MenuID::LanguageEnglish:
+				case (UINT_PTR)MenuID::LanguageChinese: {
+					SetLanguage((UINT_PTR)wParam == (UINT_PTR)MenuID::LanguageChinese ? Language::Chinese : Language::English);
+					LocaliseMenu(MainMenu);
+					CheckMenuRadioItem(LanguageMenu, (UINT_PTR)MenuID::LanguageBegin, (UINT_PTR)MenuID::LanguageEnd, (UINT_PTR)wParam, MF_BYCOMMAND);
+					DrawMenuBar(hWnd);
+					Global::Redraw = true;
 					break;
 				}
 				case (UINT_PTR)MenuID::AboutLicense: {
