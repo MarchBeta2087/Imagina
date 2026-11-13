@@ -202,6 +202,10 @@ Notes:
   the format), `--windows` (open every dialog) and `--stress` (zoom every frame),
   which makes the renderer, the file formats and the UI testable without a dialog:
 
+  `--lang en|zh-CN` selects the interface language (the system locale is used when
+  it is missing); the CJK font the Chinese UI needs is not part of the repository,
+  see [fonts/README.md](fonts/README.md).
+
   ```
   ./build/Imagina.exe --frames 90 --screenshot shot.bmp
   ./build/Imagina.exe --windows --frames 30 --screenshot ui.bmp
