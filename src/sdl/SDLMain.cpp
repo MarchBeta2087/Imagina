@@ -9,6 +9,7 @@
 #include "Includes.h"
 #include "File.h"
 #include "Language.h"
+#include "WindowIcon.h"
 #include "ZoomExport.h"
 #include "RawMapCodec.h"
 
@@ -1094,6 +1095,17 @@ int main(int argc, char **argv) {
 	if (!Window) {
 		fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
 		return 1;
+	}
+
+	// The window icon is compiled in (see tools/make-icon.py), so the program does
+	// not have to find a data file next to the executable.
+	{
+		SDL_Surface *Icon = SDL_CreateSurfaceFrom(WindowIconWidth, WindowIconHeight,
+			SDL_PIXELFORMAT_RGBA32, const_cast<uint8_t *>(WindowIconPixels), WindowIconWidth * 4);
+		if (Icon) {
+			SDL_SetWindowIcon(Window, Icon);
+			SDL_DestroySurface(Icon);
+		}
 	}
 
 	GLContext = SDL_GL_CreateContext(Window);
