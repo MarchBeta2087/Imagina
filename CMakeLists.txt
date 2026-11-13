@@ -53,6 +53,30 @@ if(IMAGINA_DEPS_DIR)
 	set(LIBRARY_PATH "${IMAGINA_DEPS_DIR}/lib" CACHE PATH "Library path" FORCE)
 endif()
 
+# vcpkg only puts its include directory on the search path through imported
+# targets, and this project also includes bare headers (GL/glext.h, glm/...), so
+# add the installed tree explicitly when the toolchain tells us where it is.
+if(VCPKG_INSTALLED_DIR)
+	set(_imagina_vcpkg_triplet "${VCPKG_TARGET_TRIPLET}")
+	if(NOT _imagina_vcpkg_triplet)
+		if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64")
+			set(_imagina_vcpkg_triplet "arm64-windows")
+		else()
+			set(_imagina_vcpkg_triplet "x64-windows")
+		endif()
+	endif()
+	set(_imagina_vcpkg_include "${VCPKG_INSTALLED_DIR}/${_imagina_vcpkg_triplet}/include")
+	set(_imagina_vcpkg_lib "${VCPKG_INSTALLED_DIR}/${_imagina_vcpkg_triplet}/lib")
+	if(EXISTS "${_imagina_vcpkg_include}")
+		list(APPEND INCLUDE_PATH "${_imagina_vcpkg_include}")
+		message(STATUS "vcpkg include directory: ${_imagina_vcpkg_include}")
+	endif()
+	if(EXISTS "${_imagina_vcpkg_lib}")
+		list(APPEND LIBRARY_PATH "${_imagina_vcpkg_lib}")
+		message(STATUS "vcpkg library directory: ${_imagina_vcpkg_lib}")
+	endif()
+endif()
+
 set(IMAGINA_GLM_TAG "1.0.1" CACHE STRING "glm version to fetch")
 set(IMAGINA_SDL3_TAG "release-3.4.20" CACHE STRING "SDL3 tag to fetch")
 set(IMAGINA_IMGUI_TAG "v1.92.9" CACHE STRING "Dear ImGui tag to fetch")
@@ -80,14 +104,17 @@ if(MPIR_LIBRARY STREQUAL "auto")
 	find_path(IMAGINA_GMP_INCLUDE_DIR gmp.h HINTS ${INCLUDE_PATH})
 	find_library(IMAGINA_GMP_LIBRARY NAMES gmp HINTS ${LIBRARY_PATH})
 	find_library(IMAGINA_GMPXX_LIBRARY NAMES gmpxx HINTS ${LIBRARY_PATH})
+	# The resolution goes into normal variables, not into the cache: writing it
+	# back with FORCE made a "not found" result permanent, so installing GMP later
+	# never took effect.
 	if(IMAGINA_GMP_INCLUDE_DIR AND IMAGINA_GMP_LIBRARY AND IMAGINA_GMPXX_LIBRARY)
 		message(STATUS "using GMP instead of MPIR: ${IMAGINA_GMP_LIBRARY}")
-		set(MPIR_LIBRARY "${IMAGINA_GMP_LIBRARY}" CACHE STRING "MPIR library" FORCE)
-		set(MPIRXX_LIBRARY "${IMAGINA_GMPXX_LIBRARY}" CACHE STRING "MPIR C++ library" FORCE)
+		set(MPIR_LIBRARY "${IMAGINA_GMP_LIBRARY}")
+		set(MPIRXX_LIBRARY "${IMAGINA_GMPXX_LIBRARY}")
 		list(APPEND ImaginaDependencyIncludes "${IMAGINA_GMP_INCLUDE_DIR}")
 	else()
-		set(MPIR_LIBRARY "mpir" CACHE STRING "MPIR library" FORCE)
-		set(MPIRXX_LIBRARY "mpirxx" CACHE STRING "MPIR C++ library" FORCE)
+		set(MPIR_LIBRARY "mpir")
+		set(MPIRXX_LIBRARY "mpirxx")
 	endif()
 endif()
 
@@ -101,8 +128,15 @@ list(APPEND CMAKE_LIBRARY_PATH ${LIBRARY_PATH})
 # with the include/lib layout next to this file needs the download, and finding
 # out here is much cheaper than in the middle of the build.
 if(WIN32 AND BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
-	find_path(IMAGINA_GLEXT_DIR NAMES GL/glext.h glext.h)
-	if(NOT IMAGINA_GLEXT_DIR)
+	# vcpkg installs into VCPKG_INSTALLED_DIR (which the toolchain sets), and a
+	# "vcpkg install" run by hand can also leave it next to the sources.
+	find_path(IMAGINA_GLEXT_DIR NAMES GL/glext.h glext.h
+		HINTS ${INCLUDE_PATH}
+			"${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include"
+			"${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/include")
+	# With the vcpkg toolchain the manifest guarantees the port, so a miss here is
+	# not worth stopping for.
+	if(NOT IMAGINA_GLEXT_DIR AND NOT CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg[.]cmake")
 		message(FATAL_ERROR
 			"GL/glext.h was not found.  The Win32 front-end needs the Khronos "
 			"OpenGL headers, which the Windows SDK does not ship: "
@@ -114,23 +148,36 @@ if(WIN32 AND BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 endif()
 find_package(ZLIB QUIET)
 find_package(PNG QUIET)
+# FindZLIB and FindPNG use ZLIB_LIBRARY/PNG_LIBRARY as their own cache variables,
+# so the fallback names are not written there: a value that is neither a target nor
+# a file on disk kept the package search from ever succeeding again (installing
+# zlib/libpng after the first configure did not help).  -DZLIB_LIBRARY=... and
+# -DPNG_LIBRARY=... still override, and are dropped when they point at nothing.
+foreach(_imagina_var ZLIB_LIBRARY ZLIB_LIBRARY_RELEASE ZLIB_LIBRARY_DEBUG PNG_LIBRARY PNG_LIBRARY_RELEASE PNG_LIBRARY_DEBUG)
+	if(DEFINED ${_imagina_var} AND NOT "${${_imagina_var}}" STREQUAL ""
+		AND NOT "${${_imagina_var}}" MATCHES "::" AND NOT EXISTS "${${_imagina_var}}")
+		unset(${_imagina_var} CACHE)
+	endif()
+endforeach()
+
 if(ZLIB_FOUND)
-	set(ZLIB_LIBRARY_DEFAULT ZLIB::ZLIB)
-elseif(MSVC)
-	set(ZLIB_LIBRARY_DEFAULT "zlibwapi")
-else()
-	set(ZLIB_LIBRARY_DEFAULT "z")
+	set(ZLIB_LIBRARY ZLIB::ZLIB)
+elseif(NOT ZLIB_LIBRARY)
+	if(MSVC)
+		set(ZLIB_LIBRARY "zlibwapi")
+	else()
+		set(ZLIB_LIBRARY "z")
+	endif()
 endif()
 if(PNG_FOUND)
-	set(PNG_LIBRARY_DEFAULT PNG::PNG)
-elseif(MSVC)
-	set(PNG_LIBRARY_DEFAULT "libpng16")
-else()
-	set(PNG_LIBRARY_DEFAULT "png")
+	set(PNG_LIBRARY PNG::PNG)
+elseif(NOT PNG_LIBRARY)
+	if(MSVC)
+		set(PNG_LIBRARY "libpng16")
+	else()
+		set(PNG_LIBRARY "png")
+	endif()
 endif()
-
-set(ZLIB_LIBRARY "${ZLIB_LIBRARY_DEFAULT}" CACHE STRING "zlib library")
-set(PNG_LIBRARY "${PNG_LIBRARY_DEFAULT}" CACHE STRING "libpng library")
 
 # The application is written for AVX2, which only exists on x86.
 set(Imagina_ArchFlags "")
