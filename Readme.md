@@ -77,8 +77,9 @@ The font is rasterised at 18 pixels times the display scale, and the UI is
 re-scaled when the window moves to a display with another scale.
 
 `cmake --install <build> --prefix <dir>` produces the layout of a release
-archive: the executable, `LICENSE.txt`, the Readmes, `CHANGELOG.md`, and
-`fonts/` with the licence and the TTF when it has been fetched.
+archive: the executable, `LICENSE.txt`, the Readmes, `CHANGELOG.md`, `icon/` with
+the icon licence, and `fonts/` with the licence and the TTF when it has been
+fetched.
 
 ## Repository layout
 
@@ -265,4 +266,9 @@ Imagina 1.0.0 (SDL front-end)
 
 ## License
 
-GNU Affero General Public License v3.0, see [LICENSE.txt](LICENSE.txt).
+The source code is licensed under the GNU Affero General Public License v3.0,
+see [LICENSE.txt](LICENSE.txt).
+
+The icon in [icon/](icon/) (and the window icon generated from it) is not part of
+the source code: it is dedicated to the public domain under CC0 1.0, see
+[icon/LICENSE](icon/LICENSE).

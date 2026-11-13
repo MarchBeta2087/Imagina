@@ -36,6 +36,13 @@ Imagina 的所有重要变更都记录在这里。格式沿用
   `cmake --install` 生成发布压缩包的布局：可执行文件、许可、Readme、更新日志，以及
   含许可文件与字体的 `fonts/`。
 
+### Licensing / 许可
+
+- The program icon (`icon/`) is dedicated to the public domain under CC0 1.0; the
+  source code stays AGPL-3.0.  See `icon/LICENSE`.
+  程序图标（`icon/`）按 CC0 1.0 贡献到公有领域；源代码仍为 AGPL-3.0，见
+  `icon/LICENSE`。
+
 ### Fixed / 修复
 
 - `ErrorMessage()` of the Win32 front-end shows UTF-8 text as Unicode instead of

@@ -1,0 +1,40 @@
+Imagina icon / Imagina 图标
+==========================
+
+Files covered / 适用范围
+
+  icon/imagina_icon.png      the source image / 源图
+  icon/imagina.ico           the Windows icon generated from it / 由它生成的 Windows 图标
+  src/sdl/WindowIcon.h       the 128x128 icon compiled into the SDL front-end,
+                             generated from it by tools/make-icon.py
+                             由它经 tools/make-icon.py 生成、编译进 SDL 前端的 128x128 图标
+
+These files are not part of the program source and are not covered by the GNU
+Affero General Public License of the rest of the repository.
+
+这些文件不属于程序源代码，不受仓库其余部分所采用的 GNU Affero 通用公共许可证约束。
+
+Licence / 许可
+
+The icon was made for this project by its author and is dedicated to the public
+domain under the Creative Commons CC0 1.0 Universal Public Domain Dedication.
+
+图标由本项目作者为本项目制作，并按 Creative Commons CC0 1.0 通用公有领域贡献声明
+放弃版权，进入公有领域。
+
+To the extent possible under law, the author has waived all copyright and related
+or neighboring rights to this work.  This work is published from China.
+
+在法律允许的范围内，作者已放弃该作品的全部著作权及邻接权利。本作品发表于中国。
+
+The full text of CC0 1.0 is available at
+<https://creativecommons.org/publicdomain/zero/1.0/legalcode> (English) and
+<https://creativecommons.org/publicdomain/zero/1.0/legalcode.zh-Hans> (简体中文).
+
+CC0 1.0 的完整文本见上述链接（英文与简体中文）。
+
+You may copy, modify, distribute and use the icon for any purpose, including
+commercially, without asking for permission and without attribution.
+
+你可以出于任何目的（包括商业用途）复制、修改、分发和使用该图标，无需申请许可，
+也无需署名。

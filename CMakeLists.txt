@@ -404,6 +404,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	# fetched into fonts/ (see tools/fetch-fonts.sh).
 	install(TARGETS Imagina RUNTIME DESTINATION .)
 	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
 	install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
 		install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
