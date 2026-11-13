@@ -173,7 +173,8 @@ bool LoadFont(ImGuiIO &IO) {
 		std::filesystem::path Directory(Base);
 		Candidates.push_back(Directory / Name);
 		Candidates.push_back(Directory / "fonts" / Name);
-		SDL_free(const_cast<char *>(Base));
+		// SDL owns the string SDL_GetBasePath() returns (it is cached and freed
+		// by SDL_Quit), so it must not be released here.
 	}
 	Candidates.push_back(std::filesystem::path("fonts") / Name);
 	Candidates.push_back(std::filesystem::path(Name));
