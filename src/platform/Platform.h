@@ -33,6 +33,10 @@ void PlatformReleaseMemory(void *Address, size_t Size);
 uintptr_t PlatformBeginWorkerTask(size_t ThreadID, size_t ThreadCount, size_t HardwareConcurrency);
 void PlatformEndWorkerTask(uintptr_t PreviousState);
 
+// Keeps the display (and the machine) awake while an export runs; the export must
+// not stop because the screen saver kicked in.
+void PlatformKeepDisplayOn(bool KeepOn);
+
 // File choosers.  Filters are "Description(*.ext)|*.ext" pairs separated by
 // '|', like the Win32 filter string.  Path is UTF-8, FilterIndex is 1 based.
 // Both return false when the dialog was cancelled.

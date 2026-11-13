@@ -80,6 +80,26 @@ jobs:
           assert black > 0.01, 'the set interior is missing'
           EOF
 
+      - name: Export a zoom sequence and read a key frame back
+        run: |
+          set -x
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina             --zoom-export /tmp/seq.imz
+          ls -l /tmp/seq-0000.rawz
+          ./build/Imagina --decode /tmp/seq-0000.rawz /tmp/frame0.raw
+          python3 - <<'EOF'
+          import struct
+          data = open('/tmp/frame0.raw', 'rb').read()
+          values = struct.unpack(f'<{len(data) // 4}f', data)
+          finite = [v for v in values if v == v and abs(v) != float('inf')]
+          print(f'{len(finite)} finite of {len(values)},'
+                f' range {min(finite):.2f}..{max(finite):.2f}')
+          # The key frame is written from the pixel manager, so a record with
+          # nothing but unset (+inf) pixels is exactly the failure this checks:
+          # the export ran, wrote a record, and every value is missing.
+          assert len(finite) > len(values) * 0.5, 'the key frame is empty'
+          assert max(finite) > 1.0, 'the key frame has no iteration counts'
+          EOF
+
   windows-msvc:
     name: Windows (MSVC, vcpkg)
     runs-on: windows-latest

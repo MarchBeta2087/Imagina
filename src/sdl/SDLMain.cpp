@@ -81,6 +81,13 @@ void PlatformPresent() {
 	SDL_GL_SwapWindow(Window);
 }
 
+void PlatformKeepDisplayOn(bool KeepOn) {
+	// The screen saver and the display sleep would otherwise stop the export from
+	// being watched; SDL does not touch the DPMS state by itself.
+	if (KeepOn) SDL_DisableScreenSaver();
+	else SDL_EnableScreenSaver();
+}
+
 // PlatformDependent.h
 void SetWorkerPriority() {
 	SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_LOW);
@@ -236,6 +243,15 @@ struct UIState {
 	bool ShowTasks = false;
 	bool ShowAbout = false;
 	bool ShowFeature = false;
+	bool ShowExport = false;
+
+	// Zoom sequence export; the session itself lives in the core (ZoomExport.h).
+	std::string ExportPath;
+	int ExportWidth = 640, ExportHeight = 360;
+	float ExportStep = 2.0f;
+	int ExportTargetType = 2;      // ZoomType::Magnification
+	std::string ExportTargetText = "2";
+	std::string ExportError;
 
 	int ImageWidth = 0, ImageHeight = 0;
 	bool ImageFollowWindow = true;
@@ -277,6 +293,53 @@ void OpenLocationDialog() {
 	UI.LocationZoom = ZoomToString(ZoomType(UI.ZoomTypeIndex), FContext.CurrentLocation.HalfH, 2.0_hr);
 	UI.LocationIterations = int(Global::ItLim);
 	UI.ShowLocation = true;
+}
+
+bool ZoomExportActive() {
+	return Session.Active;
+}
+
+void OpenExportDialog() {
+	if (!Session.Active) {
+		UI.ExportWidth = int(FContext.ImageWidth);
+		UI.ExportHeight = int(FContext.ImageHeight);
+		UI.ExportTargetType = int(Session.TargetType);
+		UI.ExportTargetText = Session.TargetText;
+		UI.ExportError.clear();
+	}
+	UI.ShowExport = true;
+}
+
+void StartExport() {
+	if (UI.ExportPath.empty()) {
+		UI.ExportError = "Choose the output file (*.imz) first.";
+		return;
+	}
+	std::string Error;
+	if (!ZoomExportPrepareNew(std::filesystem::path(UI.ExportPath), size_t(std::max(UI.ExportWidth, 4)),
+			size_t(std::max(UI.ExportHeight, 4)), double(UI.ExportStep), ZoomType(UI.ExportTargetType), UI.ExportTargetText, Error)) {
+		UI.ExportError = Error;
+		return;
+	}
+	UI.ExportError.clear();
+	ZoomExportCaptureView();
+	ZoomExportBegin();
+}
+
+void ResumeExport() {
+	std::string Path;
+	int FilterIndex = 1;
+	if (!PlatformOpenFileDialog("Resume zoom sequence", "Imagina export record(*.imz)|*.imz|All Files(*.*)|*.*|", Path, FilterIndex)) return;
+	std::string Error;
+	if (!ZoomExportPrepareResume(std::filesystem::path(Path), Error)) {
+		UI.ExportError = Error;
+		UI.ShowExport = true;
+		return;
+	}
+	UI.ExportPath = Path;
+	UI.ShowExport = true;
+	UI.ExportError.clear();
+	ZoomExportBegin();
 }
 
 void OpenTransformationDialog() {
@@ -372,6 +435,9 @@ void DrawMenuBar() {
 		if (ImGui::MenuItem(Tr("Save..."), "Ctrl+S")) SaveFilePrompt();
 		if (ImGui::MenuItem(Tr("Save image..."), "Ctrl+Shift+S")) SaveImagePrompt(false);
 		if (ImGui::MenuItem(Tr("Save raw pixel data..."))) SaveImagePrompt(true);
+		ImGui::Separator();
+		if (ImGui::MenuItem(Tr("Export zoom sequence..."), nullptr, false, !ZoomExportActive())) OpenExportDialog();
+		if (ImGui::MenuItem(Tr("Resume zoom sequence..."), nullptr, false, !ZoomExportActive())) ResumeExport();
 		ImGui::Separator();
 		if (ImGui::MenuItem(Tr("Quit"), "Ctrl+Q")) {
 			SDL_Event Quit = {};
@@ -647,6 +713,50 @@ void DrawDialogs() {
 		ImGui::End();
 	}
 
+	if (UI.ShowExport) {
+		ImGui::SetNextWindowPos(ImVec2(40, 600), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(620, 0), ImGuiCond_Appearing);
+		if (ImGui::Begin(Tr("Export zoom sequence"), &UI.ShowExport, ImGuiWindowFlags_AlwaysAutoResize)) {
+			if (Session.Active || Session.Finished) {
+				SRReal Fraction = 0.0;
+				std::string Status = ZoomExportStatus(Fraction);
+				ImGui::ProgressBar(float(Fraction), ImVec2(-1, 0));
+				ImGui::TextUnformatted(Status.c_str());
+				if (!Session.Error.empty()) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", Session.Error.c_str());
+				if (Session.Active) {
+					if (ImGui::Button(Tr("Cancel"), ImVec2(120, 0))) ZoomExportEnd();
+				} else if (Session.Finished) {
+					ImGui::Text("%s: %zu / %zu %s", Tr("Finished"), Session.DoneCount, Session.Frames.size(), Tr("key frames"));
+				}
+				if (ImGui::Button(Tr("Close"), ImVec2(120, 0))) UI.ShowExport = false;
+			} else {
+				ImGui::InputText(Tr("Record"), &UI.ExportPath);
+				ImGui::SameLine();
+				if (ImGui::Button(Tr("Browse..."))) {
+					std::string Path;
+					int FilterIndex = 1;
+					if (PlatformSaveFileDialog("Export zoom sequence", "Imagina export record(*.imz)|*.imz|", Path, FilterIndex)) {
+						std::filesystem::path Chosen(Path);
+						if (!Chosen.has_extension()) Chosen += ".imz";
+						UI.ExportPath = Chosen.string();
+					}
+				}
+				ImGui::InputInt(Tr("Width"), &UI.ExportWidth);
+				ImGui::InputInt(Tr("Height"), &UI.ExportHeight);
+				ImGui::InputFloat(Tr("Step"), &UI.ExportStep, 0.1f, 1.0f, "%.3f");
+				const char *TargetTypes[] = { Tr("Height"), Tr("Half height"), Tr("Magnification"), Tr("Depth") };
+				ImGui::Combo(Tr("Unit"), &UI.ExportTargetType, TargetTypes, 4);
+				ImGui::InputText(Tr("Zoom"), &UI.ExportTargetText);
+				if (!UI.ExportError.empty()) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", UI.ExportError.c_str());
+				ImGui::Separator();
+				if (ImGui::Button(Tr("Start"), ImVec2(120, 0))) StartExport();
+				ImGui::SameLine();
+				if (ImGui::Button(Tr("Close"), ImVec2(120, 0))) UI.ShowExport = false;
+			}
+		}
+		ImGui::End();
+	}
+
 	if (UI.ShowFeature && FContext.Feature) {
 		if (ImGui::Begin(Tr("Feature"), &UI.ShowFeature, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::TextUnformatted(Narrow(FContext.Feature->Name()).c_str());
@@ -771,7 +881,9 @@ void ResizeWindow(int32_t Width, int32_t Height) {
 	WindowWidth = size_t(Width);
 	WindowHeight = size_t(Height);
 	ResizeViewport(Width, Height);
-	if (Global::ImageSizeFollowWindowSize) FContext.SetResolution(Width, Height);
+	// A running export owns the resolution (it sets the size of the key frames), so
+	// following the window would change the size of the frames mid-export.
+	if (Global::ImageSizeFollowWindowSize && !Session.Active) FContext.SetResolution(Width, Height);
 	Global::Redraw = true;
 }
 
@@ -923,6 +1035,11 @@ static int PrintPeriod(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+	const char *ExportPath = nullptr;
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--zoom-export") && i + 1 < argc) ExportPath = argv[++i];
+	}
+
 	if (argc >= 2 && !strcmp(argv[1], "--decode")) return DecodeRawMap(argc, argv);
 	if (argc >= 2 && !strcmp(argv[1], "--period")) return PrintPeriod(argc, argv);
 	if (argc >= 2 && (!strcmp(argv[1], "--version") || !strcmp(argv[1], "-v"))) {
@@ -1024,6 +1141,21 @@ int main(int argc, char **argv) {
 	ImGui_ImplSDL3_InitForOpenGL(Window, GLContext);
 	ImGui_ImplOpenGL3_Init("#version 150");
 
+	if (ExportPath) {
+		// Headless export with the dialog defaults, which is how CI exercises the
+		// whole pipeline (export, record, key frames, --decode).
+		std::string Error;
+		if (!ZoomExportPrepareNew(std::filesystem::path(ExportPath), size_t(std::max(UI.ExportWidth, 4)),
+				size_t(std::max(UI.ExportHeight, 4)), double(UI.ExportStep), ZoomType(UI.ExportTargetType), UI.ExportTargetText, Error)) {
+			fprintf(stderr, "cannot start the export: %s", Error.c_str());
+			fputc(10, stderr);
+			return 1;
+		}
+		UI.ExportPath = ExportPath;
+		ZoomExportCaptureView();
+		ZoomExportBegin();
+	}
+
 	bool Running = true;
 	long Frame = 0;
 	while (Running) {
@@ -1054,7 +1186,9 @@ int main(int argc, char **argv) {
 			Global::Redraw = true;
 		}
 
-		FContext.Update();
+		if (Session.Active) ZoomExportTick();
+		else if (!ExportPath) FContext.Update();
+		if (ExportPath && !Session.Active) Running = false;
 
 		BeginRender();
 		RenderFractal(FContext);
