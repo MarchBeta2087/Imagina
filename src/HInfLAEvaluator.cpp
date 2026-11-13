@@ -33,11 +33,9 @@ HInfLAEvaluator::JuliaPixel HInfLAEvaluator::JuliaMipmaps::Sample(HRComplex z, H
 	return Pixel;
 }
 HInfLAEvaluator::HInfLAEvaluator() {
-	MEMORYSTATUSEX statex;
-	statex.dwLength = sizeof(statex);
-	GlobalMemoryStatusEx(&statex);
-	RefReserveSize = (statex.ullTotalPhys) & ~(CommitSize - 1);
-	LAReserveSize = (statex.ullTotalPhys / 2) & ~(CommitSize - 1);
+	size_t Memory = PlatformAvailableMemory();
+	RefReserveSize = Memory & ~(CommitSize - 1);
+	LAReserveSize = (Memory / 2) & ~(CommitSize - 1);
 	featureFinder = new FeatureFinder;
 }
 HInfLAEvaluator::~HInfLAEvaluator() {
@@ -149,7 +147,7 @@ template<typename real, typename orbitreal> void HInfLAEvaluator::SaveCompressed
 	WayPoints.Serialize(stream);
 	Rebases.Serialize(stream);
 }
-template<typename real>__declspec(noinline) void HInfLAEvaluator::LoadCompressedOrbit(std::istream &stream, LAReference<real> &Ref) {
+template<typename real> IMAGINA_NOINLINE void HInfLAEvaluator::LoadCompressedOrbit(std::istream &stream, LAReference<real> &Ref) {
 	using WayPoint = WayPoint<real>;
 	using complex = std::complex<real>;
 

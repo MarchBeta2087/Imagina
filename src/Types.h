@@ -1,7 +1,7 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#include <mpirxx.h>
+#include "GmpCompat.h"
 #include "Platform.h"
 #include "FloatExp.h"
 #include "ArbitraryPrecision.h"

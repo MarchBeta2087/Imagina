@@ -160,13 +160,13 @@ void CreateMainWindow() {
 	WindowClass.lpfnWndProc = WindowProcess;
 	WindowClass.cbClsExtra = 0;
 	WindowClass.cbWndExtra = 0;
-	WindowClass.hInstance = nullptr;
-	WindowClass.hIcon = nullptr;
+	WindowClass.hInstance = GetModuleHandle(nullptr);
+	WindowClass.hIcon = LoadIcon(WindowClass.hInstance, MAKEINTRESOURCE(IDI_ICON1));
 	WindowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	WindowClass.hbrBackground = nullptr;
 	WindowClass.lpszMenuName = nullptr;
 	WindowClass.lpszClassName = L"ImaginaMainWindow";
-	WindowClass.hIconSm = nullptr;
+	WindowClass.hIconSm = LoadIcon(WindowClass.hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
 	RegisterClassEx(&WindowClass);
 
@@ -325,7 +325,6 @@ void SaveImage(bool raw = false) {
 // dialog shows all of that together with the licence text, which ships inside
 // the executable as a resource.
 static const wchar_t AboutNotice[] =
-	L"Imagina - fast fractal renderer & explorer\r\n"
 	L"Copyright (C) 2023 Zhuoran and contributors (see the source repository).\r\n"
 	L"\r\n"
 	L"This program is free software: you can redistribute it and/or modify it under the\r\n"
@@ -344,7 +343,11 @@ static const wchar_t AboutNotice[] =
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
 		case WM_INITDIALOG: {
-			SetDlgItemTextW(hWndDlg, IDC_ABOUT_TEXT, AboutNotice);
+			// The version is prepended at run time so that the notice does not
+			// have to be spelled out again in CMake.
+			std::wstring VersionLine = L"Imagina " + std::wstring(IMAGINA_VERSION, IMAGINA_VERSION + strlen(IMAGINA_VERSION))
+				+ L" - fast fractal renderer & explorer\r\n";
+			SetDlgItemTextW(hWndDlg, IDC_ABOUT_TEXT, (VersionLine + AboutNotice).c_str());
 
 			HRSRC Resource = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_LICENSE), RT_RCDATA);
 			if (Resource) {
@@ -449,51 +452,7 @@ INT_PTR SetFormulaProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lPara
 	return 0;
 }
 
-std::string ZoomToString(ZoomType type, HRReal halfH, HRReal OriginalHalfH) {
-	char Buffer[32];
-	switch (type) {
-		case ZoomType::Height: {
-			gmp_sprintf(Buffer, "%.12Fg", (halfH * 2.0_hr).to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::HalfHeight: {
-			gmp_sprintf(Buffer, "%.12Fg", halfH.to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::Magnification: {
-			gmp_sprintf(Buffer, "%.12Fg", (OriginalHalfH / halfH).to_mpf_class(53).get_mpf_t());
-			break;
-		}
-		case ZoomType::Depth: {
-			sprintf_s(Buffer, "%.15g", log2(OriginalHalfH / halfH));
-			break;
-		}
-	}
-	return Buffer;
-}
 
-HRReal ParseZoom(ZoomType type, std::string_view string, HRReal OriginalHalfH) {
-	HRReal Zoom = mpf_class(string.data(), 52);
-
-	switch (type) {
-		case ZoomType::Height: {
-			Zoom *= 0.5;
-			break;
-		}
-		case ZoomType::HalfHeight: {
-			break;
-		}
-		case ZoomType::Magnification: {
-			Zoom = OriginalHalfH / Zoom;
-			break;
-		}
-		case ZoomType::Depth: {
-			Zoom = OriginalHalfH / pow2(SRReal(Zoom));
-			break;
-		}
-	}
-	return Zoom;
-}
 
 INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	static int ItemIndex = 2;
@@ -549,7 +508,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 						try {
 							HRReal HalfH = ParseZoom(ZoomType(ItemIndex), Buffer, 2.0_hr);
 							if (HalfH > 16.0_hr) HalfH = 16.0_hr;
-							uint64_t Precision = -std::min(0ll, HalfH.Exponent) + 64;
+							uint64_t Precision = -std::min<int64_t>(0, HalfH.Exponent) + 64;
 
 							GetDlgItemTextA(hWndDlg, IDC_REAL, Buffer, Length);
 							FContext.CenterCoordinate.X = mpf_class(Buffer, Precision);
@@ -1090,7 +1049,7 @@ INT_PTR FeatureFinderProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 						MessageBoxA(hWndDlg, "Zoom target value out of range.", nullptr, MB_OK | MB_ICONERROR);
 						break;
 					}
-					Precision = -std::min(0ll, TargetRadius.Exponent) + 64;
+					Precision = -std::min<int64_t>(0, TargetRadius.Exponent) + 64;
 
 					Evaluator::FeatureFinder *featureFinder = FContext.evaluator->GetFeatureFinder();
 					newItLim = FContext.Feature->ItLimForZoomLevel(TargetRadius);
@@ -1431,7 +1390,9 @@ LRESULT CALLBACK WindowProcess(HWND hWnd, UINT Message, WPARAM wParam, LPARAM lP
 				SizeChanged = true;
 			} else {
 				ResizeViewport(WindowWidth, WindowHeight);
-				if (Global::ImageSizeFollowWindowSize) {
+				// A running export owns the resolution (it sets the size of the key
+				// frames), so following the window would resize the frames.
+				if (Global::ImageSizeFollowWindowSize && !Session.Active) {
 					FContext.SetResolution(WindowWidth, WindowHeight);
 				}
 			}

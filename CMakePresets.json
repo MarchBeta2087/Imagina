@@ -1,0 +1,61 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows x64, MSVC, Win32 front-end (vcpkg)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-msvc",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "IMAGINA_FRONTEND": "win32",
+        "MPIR_USE_DLL": "OFF",
+        "BUILD_CODEC_TEST": "ON"
+      },
+      "description": "Run this from a Visual Studio developer prompt, or use build.ps1, so that MSVC is on PATH."
+    },
+    {
+      "name": "windows-msvc-sdl",
+      "displayName": "Windows x64, MSVC, SDL front-end (vcpkg)",
+      "inherits": "windows-msvc",
+      "binaryDir": "${sourceDir}/build/windows-msvc-sdl",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "IMAGINA_FRONTEND": "sdl"
+      },
+      "generator": "Ninja",
+      "description": "Run this from a Visual Studio developer prompt, or use build.ps1, so that MSVC is on PATH."
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux x64, GCC, SDL front-end (system packages)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "IMAGINA_FRONTEND": "sdl",
+        "BUILD_CODEC_TEST": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc"
+    },
+    {
+      "name": "windows-msvc-sdl",
+      "configurePreset": "windows-msvc-sdl"
+    },
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    }
+  ]
+}

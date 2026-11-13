@@ -71,6 +71,17 @@ currently known intermittent crash).
 The Win32 front-end can only be built on Windows; say so in the pull request if you
 did not build it.
 
+Tier 1 platforms are Windows x86-64 and Linux x86-64 (the CI covers Linux with GCC and
+Clang, including a headless render check).  macOS is Tier 2: the build is kept working
+as far as possible, but there is no CI, so say so if a change only builds there.
+
+## Fonts
+
+The `.ttf` in `fonts/` (CJK text for the SDL front-end) is **not** part of the
+repository: this project is a fork, and GitHub refuses to accept LFS objects for
+forks.  See `fonts/README.md` for the download and the licence; the front-end falls
+back to its built-in font when the file is missing.
+
 ## Issues and pull requests
 
 * Bug reports and feature requests use the templates in `.github/ISSUE_TEMPLATE/`.
@@ -133,6 +144,16 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Test    # Windows
 崩溃时设置 `IMAGINA_CRASH_REPORT=1` 会打印栈回溯（当前已知的偶发崩溃见 issue #6）。
 
 Win32 前端只能在 Windows 上构建；如果没有构建它，请在 PR 里注明。
+
+Tier 1 平台是 Windows x86-64 与 Linux x86-64（CI 覆盖 Linux 的 GCC/Clang，并做无头渲染
+检查）。macOS 属于 Tier 2：尽量保持可构建，但没有 CI，如果某个改动只能在那里构建，
+请在 PR 里说明。
+
+### 字体
+
+`fonts/` 里的 `.ttf`（SDL 前端显示中日韩文字用）**不随仓库分发**：本项目是 fork，
+GitHub 不允许向 fork 上传 LFS 对象。下载方式与许可见 `fonts/README.md`；字体缺失时
+前端会回退到内置字体。
 
 ### Issue 与 Pull Request
 

@@ -108,7 +108,7 @@ void FractalContext::ChangeLocation(RelLocation NewLocation) {
 	if (NewLocation.X == CurrentLocation.X && NewLocation.Y == CurrentLocation.Y && NewLocation.HalfH == CurrentLocation.HalfH) {
 		return;
 	}
-	if (LockReference && (abs(NewLocation.X) > NewLocation.HalfH * 0x1p20_hr || abs(NewLocation.Y) > NewLocation.HalfH * HRReal(1ull << 20))) {
+	if (LockReference && (abs(NewLocation.X) > NewLocation.HalfH * 0x1p20_hr || abs(NewLocation.Y) > NewLocation.HalfH * HRReal(uint64_t(1) << 20))) {
 		return;
 	}
 #ifdef ANIMATED_ZOOM
@@ -184,7 +184,7 @@ void FractalContext::SetLocation(Coordinate newCenterCoordinate, size_t precisio
 }
 
 void FractalContext::ChangeCenter() {
-	uint64_t Precision = -std::min(0ll, CurrentLocation.HalfH.Exponent) + 64;
+	uint64_t Precision = -std::min<int64_t>(0, CurrentLocation.HalfH.Exponent) + 64;
 	SetDefaultPrecision(Precision);
 	CenterCoordinate.X.set_prec(Precision);
 	CenterCoordinate.Y.set_prec(Precision);

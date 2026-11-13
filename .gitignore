@@ -24,6 +24,8 @@ mono_crash.*
 x64/
 x86/
 [Ww][Ii][Nn]32/
+# ... except our own source directory, which is not a build output.
+!src/win32/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
@@ -368,3 +370,7 @@ FodyWeavers.xsd
 # Dependency sources used to build them (see Readme.md)
 /deps/
 CMakeSettings.json
+
+## Fonts: the TTF used for CJK text is not distributed with the repository,
+## see fonts/README.md.  / 中日韩字体不随仓库分发，见 fonts/README.md。
+fonts/*.ttf

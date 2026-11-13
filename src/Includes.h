@@ -13,7 +13,11 @@
 
 #define GLEW_STATIC
 #endif
-#if __has_include(<GL/gl.h>)
+#if defined(__APPLE__)
+// macOS has no GL/gl.h unless XQuartz is installed; the framework provides the
+// 3.2 core profile.
+#include <OpenGL/gl3.h>
+#elif __has_include(<GL/gl.h>)
 #include <GL/gl.h>
 #elif __has_include(<GLES3/gl3.h>)
 #include <GLES3/gl3.h>
@@ -55,6 +59,14 @@
 
 #define unused [[maybe_unused]]
 
+#if defined(_MSC_VER)
+#define IMAGINA_ALWAYS_INLINE __forceinline
+#define IMAGINA_NOINLINE __declspec(noinline)
+#else
+#define IMAGINA_ALWAYS_INLINE inline __attribute__((always_inline))
+#define IMAGINA_NOINLINE __attribute__((noinline))
+#endif
+
 #include <thread>
 #include <stddef.h>
 #include <stdint.h>
@@ -72,6 +84,7 @@
 #include "JitEvaluator.h"
 #include "Render.h"
 #include "Platform.h"
+#include "Version.h"
 #include "WindowState.h"
 
 inline uint32_t CountLeadingZeros(uint32_t n) {

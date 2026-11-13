@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 3.16)
 
-project ("Imagina" LANGUAGES C CXX)
+# The version of the program; it appears in --version, the About dialog and the
+# Windows version resource.  0.x until the SDL front-end reaches parity with the
+# Win32 one (see the Readme, "Versioning").
+project ("Imagina" VERSION 0.2.0 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
@@ -29,21 +32,89 @@ else()
 endif()
 option(BUILD_GUI "Build the Imagina application" ${BUILD_GUI_DEFAULT})
 
+# ---------------------------------------------------------------------------
+# Dependencies
+#
+# Every dependency is looked up in this order: the bundled directory
+# (IMAGINA_DEPS_DIR/include and lib, which is what the Windows build ships),
+# then the system paths.  Anything that cannot be found and is available as
+# source (glm, SDL3, Dear ImGui) is fetched from GitHub; the tags are pinned
+# below and can be overridden.
+#
+# Offline builds: point FetchContent at existing checkouts with
+#   -DFETCHCONTENT_SOURCE_DIR_SDL3=<dir> -DFETCHCONTENT_SOURCE_DIR_IMGUI=<dir>
+#   -DFETCHCONTENT_SOURCE_DIR_GLM=<dir>
+# or use -DIMAGINA_IMGUI_PATH=<dir> for Dear ImGui.
+# ---------------------------------------------------------------------------
+set(IMAGINA_DEPS_DIR "" CACHE PATH "Directory with include/ and lib/ holding the bundled dependencies")
 set(INCLUDE_PATH "include" CACHE PATH "Include path")
 set(LIBRARY_PATH "lib" CACHE PATH "Library path")
+if(IMAGINA_DEPS_DIR)
+	set(INCLUDE_PATH "${IMAGINA_DEPS_DIR}/include" CACHE PATH "Include path" FORCE)
+	set(LIBRARY_PATH "${IMAGINA_DEPS_DIR}/lib" CACHE PATH "Library path" FORCE)
+endif()
 
-# Library names differ between toolchains (zlibwapi.lib for the Visual Studio
-# build, libz for most GNU/Clang setups), so they can be overridden on the
-# command line: -DZLIB_LIBRARY=z -DMPIR_LIBRARY=mpir ...
-if(WIN32)
+set(IMAGINA_GLM_TAG "1.0.1" CACHE STRING "glm version to fetch")
+set(IMAGINA_SDL3_TAG "release-3.4.20" CACHE STRING "SDL3 tag to fetch")
+set(IMAGINA_IMGUI_TAG "v1.92.9" CACHE STRING "Dear ImGui tag to fetch")
+
+find_path(GLM_INCLUDE_DIR glm/glm.hpp HINTS ${INCLUDE_PATH})
+if(NOT GLM_INCLUDE_DIR)
+	message(STATUS "glm not found, fetching ${IMAGINA_GLM_TAG} from GitHub")
+	include(FetchContent)
+	FetchContent_Declare(glm
+		GIT_REPOSITORY https://github.com/g-truc/glm.git
+		GIT_TAG ${IMAGINA_GLM_TAG}
+		GIT_SHALLOW TRUE)
+	FetchContent_Populate(glm)
+	set(GLM_INCLUDE_DIR "${glm_SOURCE_DIR}")
+endif()
+list(APPEND ImaginaDependencyIncludes "${GLM_INCLUDE_DIR}")
+
+# MPIR is a fork of GMP and the sources use whichever is installed (see
+# src/GmpCompat.h).  Distributions ship GMP; MPIR has to be built from source,
+# which is what the Windows build does.  "auto" prefers MPIR when MPIR_LIBRARY
+# was set explicitly, and GMP otherwise.
+set(MPIR_LIBRARY "auto" CACHE STRING "MPIR library, or 'auto' to use GMP when MPIR is not there")
+set(MPIRXX_LIBRARY "auto" CACHE STRING "MPIR C++ library, or 'auto'")
+if(MPIR_LIBRARY STREQUAL "auto")
+	find_path(IMAGINA_GMP_INCLUDE_DIR gmp.h HINTS ${INCLUDE_PATH})
+	find_library(IMAGINA_GMP_LIBRARY NAMES gmp HINTS ${LIBRARY_PATH})
+	find_library(IMAGINA_GMPXX_LIBRARY NAMES gmpxx HINTS ${LIBRARY_PATH})
+	if(IMAGINA_GMP_INCLUDE_DIR AND IMAGINA_GMP_LIBRARY AND IMAGINA_GMPXX_LIBRARY)
+		message(STATUS "using GMP instead of MPIR: ${IMAGINA_GMP_LIBRARY}")
+		set(MPIR_LIBRARY "${IMAGINA_GMP_LIBRARY}" CACHE STRING "MPIR library" FORCE)
+		set(MPIRXX_LIBRARY "${IMAGINA_GMPXX_LIBRARY}" CACHE STRING "MPIR C++ library" FORCE)
+		list(APPEND ImaginaDependencyIncludes "${IMAGINA_GMP_INCLUDE_DIR}")
+	else()
+		set(MPIR_LIBRARY "mpir" CACHE STRING "MPIR library" FORCE)
+		set(MPIRXX_LIBRARY "mpirxx" CACHE STRING "MPIR C++ library" FORCE)
+	endif()
+endif()
+
+# zlib and libpng: an installed package first (vcpkg, the system packages), then
+# the names of the bundled lib/ directory that only the Visual Studio layout uses.
+list(APPEND CMAKE_INCLUDE_PATH ${INCLUDE_PATH})
+list(APPEND CMAKE_LIBRARY_PATH ${LIBRARY_PATH})
+find_package(ZLIB QUIET)
+find_package(PNG QUIET)
+if(ZLIB_FOUND)
+	set(ZLIB_LIBRARY_DEFAULT ZLIB::ZLIB)
+elseif(MSVC)
 	set(ZLIB_LIBRARY_DEFAULT "zlibwapi")
 else()
 	set(ZLIB_LIBRARY_DEFAULT "z")
 endif()
-set(ZLIB_LIBRARY "${ZLIB_LIBRARY_DEFAULT}" CACHE STRING "Name of the zlib library")
-set(PNG_LIBRARY "libpng16" CACHE STRING "Name of the libpng library")
-set(MPIR_LIBRARY "mpir" CACHE STRING "Name of the MPIR library")
-set(MPIRXX_LIBRARY "mpirxx" CACHE STRING "Name of the MPIR C++ library")
+if(PNG_FOUND)
+	set(PNG_LIBRARY_DEFAULT PNG::PNG)
+elseif(MSVC)
+	set(PNG_LIBRARY_DEFAULT "libpng16")
+else()
+	set(PNG_LIBRARY_DEFAULT "png")
+endif()
+
+set(ZLIB_LIBRARY "${ZLIB_LIBRARY_DEFAULT}" CACHE STRING "zlib library")
+set(PNG_LIBRARY "${PNG_LIBRARY_DEFAULT}" CACHE STRING "libpng library")
 
 # The application is written for AVX2, which only exists on x86.
 set(Imagina_ArchFlags "")
@@ -81,6 +152,7 @@ endif()
 # flags below.
 function(ImaginaApplyCompilerOptions Target)
 	set_property(TARGET ${Target} PROPERTY CXX_STANDARD 20)
+	target_compile_definitions(${Target} PRIVATE "IMAGINA_VERSION=\"${PROJECT_VERSION}\"")
 	set_property(TARGET ${Target} PROPERTY CXX_STANDARD_REQUIRED ON)
 	if(MSVC)
 		target_compile_options(${Target} PRIVATE /W3 /GR /EHsc /bigobj ${Imagina_ArchFlags})
@@ -88,6 +160,17 @@ function(ImaginaApplyCompilerOptions Target)
 		# GCC and Clang: the same set of options the Visual Studio build uses,
 		# expressed in the GNU dialect (clang-cl is handled by the MSVC branch).
 		target_compile_options(${Target} PRIVATE ${Imagina_ArchFlags} -fno-math-errno)
+
+		# GCC 16 miscompiles 32 byte struct copies into "vmovdqa %ymm,offset(%rsp)"
+		# even though the ABI only guarantees 16 byte stack alignment on Windows
+		# (where -mpreferred-stack-boundary cannot be raised above 4), which
+		# faults with #GP.  That is the intermittent crash of issue #6: keeping
+		# the auto generated vectors at 128 bit avoids those aligned 256 bit
+		# moves; the explicit _mm256_* intrinsics of the computation are not
+		# affected.
+		if(Imagina_ArchFlags)
+			target_compile_options(${Target} PRIVATE -mprefer-vector-width=128)
+		endif()
 	endif()
 
 	if(IMAGINA_ENABLE_LTO)
@@ -118,10 +201,13 @@ set(ImaginaCoreSources
 	src/Global.cpp
 	src/HInfLAEvaluator.cpp
 	src/JitEvaluator.cpp
+	src/Language.cpp
 	src/PixelManager.cpp
 	src/RawMapCodec.cpp
 	src/Render.cpp
+	src/ZoomExport.cpp
 	src/platform/PlatformMemory.cpp
+	src/platform/PlatformThread.cpp
 )
 
 if(ENABLE_CUSTOM_FORMULA)
@@ -154,9 +240,13 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		"${CMAKE_CURRENT_SOURCE_DIR}")
 	target_precompile_headers (Imagina PRIVATE "src/Includes.h")
 	set_source_files_properties("src/win32/Resource.rc" PROPERTIES LANGUAGE RC)
+	# The version numbers are generated into a header instead of being passed with
+	# -D: windres and rc.exe disagree about quoting string definitions.
+	configure_file("src/win32/Version.rc.in" "${CMAKE_CURRENT_BINARY_DIR}/Version.rc.h" @ONLY)
+	target_include_directories(Imagina PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 	target_compile_definitions(Imagina PRIVATE UNICODE)
 
-	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_include_directories(Imagina SYSTEM PRIVATE "${INCLUDE_PATH}/Debug")
@@ -196,7 +286,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		# linker's own default manifest cannot be combined with the one in
 		# Resource.rc.
 		target_link_options(Imagina PRIVATE -municode)
-		set_source_files_properties("src/win32/Resource.rc" PROPERTIES COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
+		set_property(SOURCE "src/win32/Resource.rc" APPEND PROPERTY COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
 endif()
 
@@ -215,38 +305,46 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 		FetchContent_Declare(SDL3
 			GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-			GIT_TAG release-3.4.20
+			GIT_TAG ${IMAGINA_SDL3_TAG}
 			GIT_SHALLOW TRUE)
 		FetchContent_MakeAvailable(SDL3)
 	endif()
 
-	# Dear ImGui: a checkout can be pointed at with -DIMAGINA_IMGUI_PATH=...,
-	# otherwise it is fetched as well.
-	set(IMAGINA_IMGUI_PATH "" CACHE PATH "Path to a Dear ImGui checkout")
-	if(IMAGINA_IMGUI_PATH)
-		set(ImGuiDir "${IMAGINA_IMGUI_PATH}")
+	# Dear ImGui: an installed package first (vcpkg builds it with the sdl3 and
+	# opengl3 backends), then a checkout pointed at with -DIMAGINA_IMGUI_PATH,
+	# then a fresh fetch.
+	find_package(imgui CONFIG QUIET)
+	if(imgui_FOUND)
+		message(STATUS "using the installed Dear ImGui ${imgui_VERSION}")
+		set(ImaginaImGuiTarget imgui::imgui)
 	else()
-		message(STATUS "Dear ImGui not found, fetching it from GitHub")
-		include(FetchContent)
-		FetchContent_Declare(ImGui
-			GIT_REPOSITORY https://github.com/ocornut/imgui.git
-			GIT_TAG v1.92.9
-			GIT_SHALLOW TRUE)
-		FetchContent_Populate(ImGui)
-		set(ImGuiDir "${imgui_SOURCE_DIR}")
-	endif()
+		set(IMAGINA_IMGUI_PATH "" CACHE PATH "Path to a Dear ImGui checkout")
+		if(IMAGINA_IMGUI_PATH)
+			set(ImGuiDir "${IMAGINA_IMGUI_PATH}")
+		else()
+			message(STATUS "Dear ImGui not found, fetching ${IMAGINA_IMGUI_TAG} from GitHub")
+			include(FetchContent)
+			FetchContent_Declare(ImGui
+				GIT_REPOSITORY https://github.com/ocornut/imgui.git
+				GIT_TAG ${IMAGINA_IMGUI_TAG}
+				GIT_SHALLOW TRUE)
+			FetchContent_Populate(ImGui)
+			set(ImGuiDir "${imgui_SOURCE_DIR}")
+		endif()
 
-	add_library(ImaginaImGui STATIC
-		"${ImGuiDir}/imgui.cpp"
-		"${ImGuiDir}/imgui_draw.cpp"
-		"${ImGuiDir}/imgui_tables.cpp"
-		"${ImGuiDir}/imgui_widgets.cpp"
-		"${ImGuiDir}/misc/cpp/imgui_stdlib.cpp"
-		"${ImGuiDir}/backends/imgui_impl_sdl3.cpp"
-		"${ImGuiDir}/backends/imgui_impl_opengl3.cpp")
-	target_include_directories(ImaginaImGui PUBLIC "${ImGuiDir}" "${ImGuiDir}/backends" "${ImGuiDir}/misc/cpp")
-	set_property(TARGET ImaginaImGui PROPERTY CXX_STANDARD 17)
-	target_link_libraries(ImaginaImGui PUBLIC SDL3::SDL3)
+		add_library(ImaginaImGui STATIC
+			"${ImGuiDir}/imgui.cpp"
+			"${ImGuiDir}/imgui_draw.cpp"
+			"${ImGuiDir}/imgui_tables.cpp"
+			"${ImGuiDir}/imgui_widgets.cpp"
+			"${ImGuiDir}/misc/cpp/imgui_stdlib.cpp"
+			"${ImGuiDir}/backends/imgui_impl_sdl3.cpp"
+			"${ImGuiDir}/backends/imgui_impl_opengl3.cpp")
+		target_include_directories(ImaginaImGui PUBLIC "${ImGuiDir}" "${ImGuiDir}/backends" "${ImGuiDir}/misc/cpp")
+		set_property(TARGET ImaginaImGui PROPERTY CXX_STANDARD 17)
+		target_link_libraries(ImaginaImGui PUBLIC SDL3::SDL3)
+		set(ImaginaImGuiTarget ImaginaImGui)
+	endif()
 
 	add_executable (Imagina
 		${ImaginaCoreSources}
@@ -261,7 +359,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/platform"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/sdl"
 		"${CMAKE_CURRENT_SOURCE_DIR}")
-	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(Imagina SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(Imagina PRIVATE ${LIBRARY_PATH})
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		target_include_directories(Imagina SYSTEM PRIVATE "${INCLUDE_PATH}/Debug")
@@ -271,7 +369,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	target_link_libraries(Imagina PRIVATE ImaginaImGui SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)
@@ -305,7 +403,7 @@ if(BUILD_CODEC_TEST)
 	add_executable (RawMapCodecTest "tests/RawMapCodecTest.cpp" "src/RawMapCodec.cpp")
 	ImaginaApplyCompilerOptions(RawMapCodecTest)
 	target_include_directories(RawMapCodecTest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-	target_include_directories(RawMapCodecTest SYSTEM PRIVATE ${INCLUDE_PATH})
+	target_include_directories(RawMapCodecTest SYSTEM PRIVATE ${INCLUDE_PATH} ${ImaginaDependencyIncludes})
 	target_link_directories(RawMapCodecTest PRIVATE ${LIBRARY_PATH})
 	target_link_libraries(RawMapCodecTest ${ZLIB_LIBRARY})
 endif()

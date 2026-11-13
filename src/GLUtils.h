@@ -27,7 +27,9 @@ extern PFNGLGETUNIFORMLOCATIONPROC		GL_glGetUniformLocation;
 extern PFNGLUNIFORM1IPROC				GL_glUniform1i;
 extern PFNGLUNIFORM1FPROC				GL_glUniform1f;
 
+#ifdef _WIN32
 extern PFNWGLSWAPINTERVALEXTPROC		GL_wglSwapIntervalEXT;
+#endif
 
 extern PFNGLGETSHADERINFOLOGPROC		GL_glGetShaderInfoLog;
 extern PFNGLGETPROGRAMINFOLOGPROC		GL_glGetProgramInfoLog;

@@ -14,11 +14,20 @@
 #include <vector>
 
 void *PlatformGetGLProcAddress(const char *Name) {
-	return (void *)wglGetProcAddress(Name);
+	void *Address = (void *)wglGetProcAddress(Name);
+	if (!Address) {
+		static HMODULE OpenGL = LoadLibraryA("opengl32.dll");
+		if (OpenGL) Address = (void *)GetProcAddress(OpenGL, Name);
+	}
+	return Address;
 }
 
 void PlatformPresent() {
 	SwapBuffers(MainDC);
+}
+
+void PlatformKeepDisplayOn(bool KeepOn) {
+	SetThreadExecutionState(KeepOn ? ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED : ES_CONTINUOUS);
 }
 
 void SetWorkerPriority() {
