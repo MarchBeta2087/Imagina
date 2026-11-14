@@ -142,8 +142,8 @@ jobs:
 
       - name: Check the AppStream metadata and the Flatpak manifest
         run: |
-          appstreamcli validate --no-net packaging/flatpak/org.imagina.Imagina.metainfo.xml
-          python3 -c "import yaml; yaml.safe_load(open('packaging/flatpak/org.imagina.Imagina.yml'))"
+          appstreamcli validate --no-net packaging/flatpak/io.github.marchbeta2087.Imagina.metainfo.xml
+          python3 -c "import yaml; yaml.safe_load(open('packaging/flatpak/io.github.marchbeta2087.Imagina.yml'))"
 
       - name: Render the UI in Chinese
         run: |

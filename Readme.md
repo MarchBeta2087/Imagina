@@ -244,8 +244,8 @@ flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/fl
 flatpak install --user -y flathub org.flatpak.Builder
 flatpak run --command=flatpak-builder org.flatpak.Builder \
     --user --disable-rofiles-fuse --install --force-clean build-flatpak \
-    packaging/flatpak/org.imagina.Imagina.yml
-flatpak run org.imagina.Imagina
+    packaging/flatpak/io.github.marchbeta2087.Imagina.yml
+flatpak run io.github.marchbeta2087.Imagina
 ```
 
 The manifest builds SDL3, Dear ImGui, GLM, GMP and the CJK font from their

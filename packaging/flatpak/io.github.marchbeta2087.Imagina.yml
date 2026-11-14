@@ -1,4 +1,4 @@
-app-id: org.imagina.Imagina
+app-id: io.github.marchbeta2087.Imagina
 runtime: org.freedesktop.Platform
 runtime-version: '26.08'
 sdk: org.freedesktop.Sdk
@@ -27,6 +27,7 @@ modules:
     build-commands:
       - mkdir -p /app/include
       - cp -r glm /app/include/glm
+      - install -Dm644 copying.txt $FLATPAK_DEST/share/licenses/$FLATPAK_ID/glm/COPYING.txt
     sources:
       - type: archive
         url: https://github.com/g-truc/glm/archive/refs/tags/1.0.1.tar.gz
@@ -94,12 +95,12 @@ modules:
       - rm -f /app/share/applications/imagina.desktop
       - rm -f /app/share/pixmaps/imagina.png
       - rm -rf /app/share/icons/hicolor
-      - install -Dm644 packaging/flatpak/org.imagina.Imagina.desktop /app/share/applications/org.imagina.Imagina.desktop
-      - install -Dm644 packaging/flatpak/org.imagina.Imagina.metainfo.xml /app/share/metainfo/org.imagina.Imagina.metainfo.xml
-      - install -Dm644 icon/imagina_128.png /app/share/icons/hicolor/128x128/apps/org.imagina.Imagina.png
-      - install -Dm644 icon/imagina_256.png /app/share/icons/hicolor/256x256/apps/org.imagina.Imagina.png
-      - install -Dm644 icon/imagina_512.png /app/share/icons/hicolor/512x512/apps/org.imagina.Imagina.png
-      - install -Dm644 LICENSE.txt /app/share/licenses/org.imagina.Imagina/LICENSE.txt
+      - install -Dm644 packaging/flatpak/io.github.marchbeta2087.Imagina.desktop /app/share/applications/io.github.marchbeta2087.Imagina.desktop
+      - install -Dm644 packaging/flatpak/io.github.marchbeta2087.Imagina.metainfo.xml /app/share/metainfo/io.github.marchbeta2087.Imagina.metainfo.xml
+      - install -Dm644 icon/imagina_128.png /app/share/icons/hicolor/128x128/apps/io.github.marchbeta2087.Imagina.png
+      - install -Dm644 icon/imagina_256.png /app/share/icons/hicolor/256x256/apps/io.github.marchbeta2087.Imagina.png
+      - install -Dm644 icon/imagina_512.png /app/share/icons/hicolor/512x512/apps/io.github.marchbeta2087.Imagina.png
+      - install -Dm644 LICENSE.txt /app/share/licenses/io.github.marchbeta2087.Imagina/LICENSE.txt
     sources:
       - type: dir
         path: ../..

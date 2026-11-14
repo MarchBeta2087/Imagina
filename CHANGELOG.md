@@ -26,10 +26,10 @@ Imagina 的所有重要变更都记录在这里。格式沿用
   the release workflow attaches the MSI next to the zip.
   Windows MSI：用 WiX 生成（`cpack -G WIX`）；Win32 前端新增了 exe、vcpkg
   运行时 DLL 和文档的 `install()` 规则，release 工作流会把 MSI 和 zip 一起附上。
-- Flatpak manifest (`packaging/flatpak/org.imagina.Imagina.yml`): builds SDL3,
+- Flatpak manifest (`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`): builds SDL3,
   Dear ImGui, GLM, GMP and the CJK font from source and installs the SDL
   front-end, desktop file, AppStream metadata and icons under `/app`.
-  Flatpak manifest（`packaging/flatpak/org.imagina.Imagina.yml`）：从源码构建
+  Flatpak manifest（`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`）：从源码构建
   SDL3、Dear ImGui、GLM、GMP 和字体，把 SDL 前端、desktop 文件、AppStream 元数据
   和图标安装到 `/app`。
 
