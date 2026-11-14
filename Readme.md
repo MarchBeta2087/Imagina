@@ -246,6 +246,23 @@ Custom formulas (`-DENABLE_CUSTOM_FORMULA=ON`) are Windows-only: the JIT
 emits Windows x64 machine code.  That build also needs SymEngine with MPC
 support, mpfr and mpc.
 
+### Windows MSI
+
+An MSI can be built from the same configured tree with WiX 3.14
+(candle/light):
+
+```
+cmake --preset windows-msvc -DIMAGINA_WIX_VERSION=3 -DCPACK_WIX_ROOT="C:/Program Files (x86)/WiX Toolset v3.14"
+cmake --build --preset windows-msvc
+cd build/windows-msvc
+cpack -G WIX
+```
+
+`-DIMAGINA_WIX_VERSION=4` (or the default `auto` when `wix.exe` is on PATH and
+`candle` is not) uses WiX 4 or later instead.  WiX 6/7 ask you to accept their
+Open Source Maintenance Fee EULA before they run; the release workflow uses
+WiX 3.14.
+
 ## Front-ends
 
 There are two front-ends, selected with `-DIMAGINA_FRONTEND=win32|sdl` (the default is

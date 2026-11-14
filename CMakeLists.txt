@@ -19,6 +19,10 @@ option(BUILD_CODEC_TEST "Build the raw map codec round trip test" OFF)
 set(IMAGINA_INSTALL_LAYOUT "portable" CACHE STRING "Install layout: portable or system")
 set_property(CACHE IMAGINA_INSTALL_LAYOUT PROPERTY STRINGS portable system)
 
+# The MSI is built with WiX.  "auto" uses wix.exe when it is on PATH (WiX 4
+# and later) and candle/light otherwise (WiX 3); set 3 or 4+ to force one.
+set(IMAGINA_WIX_VERSION "auto" CACHE STRING "WiX major version for the MSI: auto, 3 or 4+")
+
 # Front-end: the Win32 one (window, menus and dialogs from MainWindow.cpp) or
 # the portable SDL3 + Dear ImGui one.  The Win32 front-end only builds on
 # Windows; the SDL one builds everywhere SDL3 and OpenGL are available.
@@ -388,6 +392,19 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		target_link_options(Imagina PRIVATE -municode)
 		set_property(SOURCE "src/win32/Resource.rc" APPEND PROPERTY COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
+
+	# "cmake --install" and the MSI use the flat layout of the release archive.
+	# vcpkg deploys the runtime DLLs next to the executable at build time; the
+	# glob below runs at install time, so a fresh build tree works as well.
+	install(TARGETS Imagina RUNTIME DESTINATION .)
+	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
+	install(CODE "
+		file(GLOB _imagina_runtime_dlls \"${CMAKE_CURRENT_BINARY_DIR}/*.dll\")
+		if(_imagina_runtime_dlls)
+			file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\" TYPE FILE FILES \${_imagina_runtime_dlls})
+		endif()
+	")
 endif()
 
 if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
@@ -577,5 +594,87 @@ if(UNIX AND NOT APPLE AND IMAGINA_FRONTEND STREQUAL "sdl")
 		"libc6, libgcc-s1, libstdc++6, libgmp10, libpng16-16, zlib1g, libglvnd0, libopengl0, libx11-6")
 	set(CPACK_DEBIAN_PACKAGE_RECOMMENDS
 		"libgl1, libgl1-mesa-dri, libwayland-client0, libdecor-0-0, zenity")
+	include(CPack)
+endif()
+
+# ---------------------------------------------------------------------------
+# Windows MSI
+#
+#   cmake --preset windows-msvc
+#   cmake --build --preset windows-msvc
+#   cd build/windows-msvc && cpack -G WIX
+#
+# WiX 3 (candle/light) and WiX 4+ (wix.exe) are supported.  "auto" picks
+# wix.exe when it is on PATH at configure time; -DIMAGINA_WIX_VERSION=3 or
+# -DCPACK_WIX_ROOT=... selects WiX 3 explicitly.
+# ---------------------------------------------------------------------------
+if(WIN32 AND IMAGINA_FRONTEND STREQUAL "win32")
+	set(CPACK_GENERATOR "WIX")
+	set(CPACK_PACKAGE_NAME "Imagina")
+	set(CPACK_PACKAGE_VENDOR "Imagina")
+	set(CPACK_PACKAGE_CONTACT "MarchBeta2087")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast fractal renderer and explorer")
+	set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/MarchBeta2087/Imagina")
+	set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+	set(CPACK_PACKAGE_FILE_NAME "Imagina-${PROJECT_VERSION}-win64")
+	set(CPACK_PACKAGE_INSTALL_DIRECTORY "Imagina")
+	set(CPACK_WIX_UPGRADE_GUID "60D1C0B8-3A77-451B-8565-999FEA50921C")
+	set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon/imagina.ico")
+	set(CPACK_WIX_PROGRAM_MENU_FOLDER "Imagina")
+	# Re-resolve every time: a previous configure may have cached a different
+	# WiX installation (or a wix.exe that was later removed).
+	unset(_imagina_wix_executable CACHE)
+	unset(_imagina_candle_executable CACHE)
+	unset(_imagina_light_executable CACHE)
+	if(IMAGINA_WIX_VERSION STREQUAL "auto")
+		# Prefer WiX 3: it is what the release uses, and WiX 6/7 require
+		# accepting the Open Source Maintenance Fee EULA before they run.
+		find_program(_imagina_auto_candle NAMES candle)
+		if(_imagina_auto_candle)
+			set(CPACK_WIX_VERSION 3)
+		else()
+			find_program(_imagina_auto_wix NAMES wix)
+			if(_imagina_auto_wix)
+				set(CPACK_WIX_VERSION 4)
+			else()
+				set(CPACK_WIX_VERSION 3)
+			endif()
+		endif()
+	else()
+		set(CPACK_WIX_VERSION "${IMAGINA_WIX_VERSION}")
+	endif()
+
+	# find_program() searches PATH before the CPACK_WIX_ROOT paths, and a WiX 4+
+	# install is commonly on PATH already.  Resolve the tools here and put the
+	# results into CPackConfig.cmake, so cpack uses the requested installation
+	# instead of whatever it finds first.
+	if(CPACK_WIX_VERSION VERSION_GREATER_EQUAL 4)
+		if(CPACK_WIX_ROOT)
+			find_program(_imagina_wix_executable NAMES wix PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+		endif()
+		if(NOT _imagina_wix_executable)
+			find_program(_imagina_wix_executable NAMES wix)
+		endif()
+		if(_imagina_wix_executable)
+			set(CPACK_WIX_EXECUTABLE "${_imagina_wix_executable}")
+		endif()
+	else()
+		if(CPACK_WIX_ROOT)
+			find_program(_imagina_candle_executable NAMES candle PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+			find_program(_imagina_light_executable NAMES light PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+		endif()
+		if(NOT _imagina_candle_executable)
+			find_program(_imagina_candle_executable NAMES candle)
+		endif()
+		if(NOT _imagina_light_executable)
+			find_program(_imagina_light_executable NAMES light)
+		endif()
+		if(_imagina_candle_executable)
+			set(CPACK_WIX_CANDLE_EXECUTABLE "${_imagina_candle_executable}")
+		endif()
+		if(_imagina_light_executable)
+			set(CPACK_WIX_LIGHT_EXECUTABLE "${_imagina_light_executable}")
+		endif()
+	endif()
 	include(CPack)
 endif()

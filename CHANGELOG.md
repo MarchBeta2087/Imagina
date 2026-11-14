@@ -19,6 +19,11 @@ Imagina 的所有重要变更都记录在这里。格式沿用
   Debian/Ubuntu 安装包：`cmake --preset linux-deb` + `cpack -G DEB` 生成 `imagina`
   包，程序安装到 `/usr/bin`，字体和文档安装到 `/usr/share`，并附带 desktop
   文件和图标；release 工作流会把 `.deb` 和压缩包一起附到草稿 Release 上。
+- Windows MSI built with WiX (`cpack -G WIX`); the Win32 front-end now has
+  `install()` rules for the executable, the vcpkg runtime DLLs and the docs, and
+  the release workflow attaches the MSI next to the zip.
+  Windows MSI：用 WiX 生成（`cpack -G WIX`）；Win32 前端新增了 exe、vcpkg
+  运行时 DLL 和文档的 `install()` 规则，release 工作流会把 MSI 和 zip 一起附上。
 
 ### Fixed / 修复
 
