@@ -236,21 +236,23 @@ It installs the executable to `/usr/bin/Imagina`, the font, licence and docs to
 `/usr/share/imagina` and `/usr/share/doc/imagina`, plus a desktop entry and an
 icon.
 
-A Flatpak is built from the same sources with the manifest in
-`packaging/flatpak/`:
+The `.deb` dependencies are derived with `dpkg-shlibdeps` at build time, so the
+package matches the distribution it was built on.  The release ships a build
+from Ubuntu 26.04 (glibc 2.43) and one from Ubuntu 22.04 (glibc 2.34); the file
+names carry the glibc version, and the 22.04 build runs on 22.04+ and Debian 12+.
+
+An AppImage is built from a system-layout build:
 
 ```
-flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user -y flathub org.flatpak.Builder
-flatpak run --command=flatpak-builder org.flatpak.Builder \
-    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
-    packaging/flatpak/io.github.marchbeta2087.Imagina.yml
-flatpak run io.github.marchbeta2087.Imagina
+cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release \
+    -DIMAGINA_FRONTEND=sdl -DIMAGINA_INSTALL_LAYOUT=system
+cmake --build build-appimage
+packaging/appimage/build-appimage.sh build-appimage Imagina-x86_64.AppImage
 ```
 
-The manifest builds SDL3, Dear ImGui, GLM, GMP and the CJK font from their
-upstream sources and uses the same system install layout with `/app` as the
-prefix.
+The script bundles GMP, libpng, zlib, libstdc++ and the CJK font and downloads
+appimagetool on the first run.  Build it on the oldest distribution you want to
+support; the release AppImage is built on Ubuntu 22.04 (glibc 2.34).
 
 On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it is
 installed (recommended under WSL), and SDL's XDG desktop portal otherwise.  A

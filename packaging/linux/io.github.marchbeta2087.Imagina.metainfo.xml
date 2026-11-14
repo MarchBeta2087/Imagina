@@ -16,11 +16,11 @@
   <launchable type="desktop-id">io.github.marchbeta2087.Imagina.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.4/docs/flathub/imagina-default.png</image>
+      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.5/docs/screenshots/imagina-default.png</image>
       <caption>The Mandelbrot set at the starting view</caption>
     </screenshot>
     <screenshot>
-      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.4/docs/flathub/imagina-deep-zoom.png</image>
+      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.5/docs/screenshots/imagina-deep-zoom.png</image>
       <caption>A deep zoom in the Mandelbrot set</caption>
     </screenshot>
   </screenshots>
@@ -32,6 +32,7 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.5" date="2026-11-15"/>
     <release version="1.0.4" date="2026-11-15"/>
     <release version="1.0.3" date="2026-11-13"/>
   </releases>
