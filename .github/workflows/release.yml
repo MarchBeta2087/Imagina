@@ -117,12 +117,23 @@ jobs:
       - name: Set up Ninja
         uses: seanmiddleditch/gha-setup-ninja@v5
 
-      - name: Fetch the CJK font
+      - name: Install WiX
         shell: pwsh
-        run: ./tools/fetch-fonts.ps1
+        run: |
+          choco install wixtoolset --version=3.14.1 -y --no-progress
+          $root = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'WiX Toolset*' |
+                  Select-Object -First 1 -ExpandProperty FullName
+          if (!$root) { throw 'WiX 3 was not installed' }
+          "IMAGINA_WIX_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "WiX: $root"
 
       - name: Configure (Win32 front-end)
-        run: cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+        shell: pwsh
+        run: >-
+          cmake --preset windows-msvc
+          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DIMAGINA_WIX_VERSION=3
+          "-DCPACK_WIX_ROOT=$env:IMAGINA_WIX_ROOT"
 
       - name: Build (Win32 front-end)
         run: cmake --build --preset windows-msvc --parallel
@@ -138,7 +149,7 @@ jobs:
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           $build = "build/windows-msvc"
           $stage = "dist/Imagina-$version-win64"
-          New-Item -ItemType Directory -Force -Path $stage, "$stage/icon", "$stage/fonts" | Out-Null
+          New-Item -ItemType Directory -Force -Path $stage, "$stage/icon" | Out-Null
 
           Copy-Item "$build/Imagina.exe" $stage
           # vcpkg deploys the runtime DLLs (gmp, libpng, zlib) next to the
@@ -146,12 +157,7 @@ jobs:
           Copy-Item "$build/*.dll" $stage
           Copy-Item LICENSE.txt, CHANGELOG.md, Readme.md, Readme.zh-CN.md $stage
           Copy-Item icon/LICENSE, icon/README.md "$stage/icon"
-          Copy-Item fonts/README.md, fonts/LICENSE "$stage/fonts"
-          Copy-Item fonts/SarasaMonoSC-Regular.ttf "$stage/fonts"
 
-          if (!(Test-Path "$stage/fonts/SarasaMonoSC-Regular.ttf")) {
-            throw "the CJK font was not downloaded"
-          }
           # vcpkg deploys the runtime DLLs next to the executable; without them
           # the staged application would not start on a clean machine.
           foreach ($pattern in "gmp-*.dll", "gmpxx-*.dll", "libpng*.dll", "z*.dll") {
@@ -163,10 +169,21 @@ jobs:
           Get-ChildItem $stage | Format-Table Name, Length
           Compress-Archive -Path $stage -DestinationPath "dist/Imagina-$version-win64.zip"
 
+      - name: Build the MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Push-Location build/windows-msvc
+          try { cpack -G WIX } finally { Pop-Location }
+          $msi = Get-ChildItem build/windows-msvc/*.msi | Select-Object -First 1
+          if (!$msi) { throw "the MSI was not generated" }
+          Copy-Item $msi.FullName dist/
+          Get-ChildItem dist
+
       - uses: actions/upload-artifact@v4
         with:
           name: win64
-          path: dist/*.zip
+          path: dist/*
           if-no-files-found: error
 
   publish:

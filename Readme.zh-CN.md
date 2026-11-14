@@ -224,6 +224,21 @@ Linux 上 SDL 前端在安装了 `zenity` 时用它显示打开/保存对话框�
 自定义公式（`-DENABLE_CUSTOM_FORMULA=ON`）仅支持 Windows：JIT 生成的是 Windows
 x64 机器码。该构建还需要启用 MPC 支持的 SymEngine、mpfr 和 mpc。
 
+### Windows MSI
+
+用 WiX 3.14（candle/light）可以在同一个构建目录里生成 MSI：
+
+```
+cmake --preset windows-msvc -DIMAGINA_WIX_VERSION=3 -DCPACK_WIX_ROOT="C:/Program Files (x86)/WiX Toolset v3.14"
+cmake --build --preset windows-msvc
+cd build/windows-msvc
+cpack -G WIX
+```
+
+`-DIMAGINA_WIX_VERSION=4`（或默认的 `auto`，当 PATH 里有 `wix.exe` 而没有
+`candle` 时）改用 WiX 4 及以上。WiX 6/7 运行前需要接受其 Open Source
+Maintenance Fee EULA；release 工作流使用 WiX 3.14。
+
 ## 前端
 
 有两个前端，用 `-DIMAGINA_FRONTEND=win32|sdl` 选择（Windows 上默认 `win32`，其他平台
