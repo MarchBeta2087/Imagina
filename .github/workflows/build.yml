@@ -140,10 +140,8 @@ jobs:
       - name: Check the translations are complete
         run: python3 tools/check-translations.py
 
-      - name: Check the AppStream metadata and the Flatpak manifest
-        run: |
-          appstreamcli validate --no-net packaging/flatpak/io.github.marchbeta2087.Imagina.metainfo.xml
-          python3 -c "import yaml; yaml.safe_load(open('packaging/flatpak/io.github.marchbeta2087.Imagina.yml'))"
+      - name: Check the AppStream metadata
+        run: appstreamcli validate --no-net packaging/linux/io.github.marchbeta2087.Imagina.metainfo.xml
 
       - name: Render the UI in Chinese
         run: |
@@ -183,6 +181,44 @@ jobs:
           dpkg-deb --info build/*.deb
           dpkg-deb --contents build/*.deb | grep -q ./usr/bin/Imagina
           dpkg-deb --contents build/*.deb | grep -q ./usr/share/imagina/fonts/SarasaMonoSC-Regular.ttf
+          # The dependencies are derived with dpkg-shlibdeps; make sure they
+          # resolve on this distribution.
+          apt-get -s install ./build/*.deb
+
+  linux-appimage:
+    name: Linux AppImage (22.04)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends             build-essential cmake ninja-build pkg-config             libgmp-dev libpng-dev zlib1g-dev             libgl1-mesa-dev libgl1-mesa-dri             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev             libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev             libxkbcommon-x11-dev libwayland-dev libdecor-0-dev             curl file
+
+      - name: Fetch the CJK font
+        run: bash tools/fetch-fonts.sh
+
+      - name: Configure (system install layout)
+        run: |
+          cmake -S . -B build -G Ninja             -DCMAKE_BUILD_TYPE=Release             -DIMAGINA_FRONTEND=sdl             -DBUILD_GUI=ON             -DBUILD_CODEC_TEST=OFF             -DIMAGINA_INSTALL_LAYOUT=system
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Build the .deb
+        run: |
+          (cd build && cpack -G DEB)
+          dpkg-deb --info build/*.deb
+          apt-get -s install ./build/*.deb
+
+      - name: Build the AppImage
+        run: |
+          packaging/appimage/build-appimage.sh build build/Imagina-x86_64.AppImage
+          ls -l build/Imagina-x86_64.AppImage
+
+      - name: Smoke test the AppImage
+        run: ./build/Imagina-x86_64.AppImage --appimage-extract-and-run --version
 
   windows-msvc:
     name: Windows (MSVC, vcpkg)

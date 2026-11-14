@@ -10,6 +10,38 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-15
+
+### Added / 新增
+
+- AppImage builds (`packaging/appimage/build-appimage.sh`): the script installs
+  the system layout into an AppDir, bundles GMP/libpng/zlib/libstdc++ and the
+  CJK font, and packages everything with appimagetool.  The release AppImage is
+  built on Ubuntu 22.04 (glibc 2.34).
+  AppImage 构建（`packaging/appimage/build-appimage.sh`）：脚本把 system 布局安装
+  到 AppDir，打包 GMP/libpng/zlib/libstdc++ 和字体，再用 appimagetool 生成
+  AppImage；发布用 Ubuntu 22.04（glibc 2.34）构建。
+- A low-glibc `.deb` built on Ubuntu 22.04 (glibc 2.34) next to the existing
+  build, and the `.deb` file names now state the glibc version they require.
+  新增在 Ubuntu 22.04（glibc 2.34）上构建的低 glibc `.deb`，并让 `.deb` 文件名
+  明确标出所需的 glibc 版本。
+
+### Changed / 变更
+
+- Flatpak packaging was dropped; the AppImage covers the same "no installer"
+  use case.  The metainfo file and application-ID desktop file it used are kept
+  for the AppImage.
+  放弃 Flatpak 打包，改用 AppImage 覆盖同样的免安装场景；保留它使用的
+  metainfo 和 app-id desktop 文件供 AppImage 使用。
+
+### Fixed / 修复
+
+- The `.deb` no longer hardcodes dependency names: `dpkg-shlibdeps` derives them
+  on the build distribution, so it picks `libpng16-16` on Ubuntu 22.04 and
+  `libpng16-16t64` on 24.04/26.04 instead of producing an uninstallable package.
+  `.deb` 不再硬编码依赖名：改由 `dpkg-shlibdeps` 按构建发行版推导，Ubuntu 22.04
+  得到 `libpng16-16`，24.04/26.04 得到 `libpng16-16t64`，不再生成无法安装的包。
+
 ## [1.0.4] - 2026-11-15
 
 ### Added / 新增
@@ -302,7 +334,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.4...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.5...dev
+[1.0.5]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
