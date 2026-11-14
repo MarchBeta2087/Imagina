@@ -12,6 +12,25 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- The optional custom formula build did not compile with GCC or Clang: the
+  encoder headers relied on transitive includes, the `and`/`or`/`not` macros
+  shadowed C++ keywords, and a function pointer was converted to `void *`
+  implicitly.
+  可选的自定义公式构建在 GCC/Clang 下无法编译：编码器头文件依赖间接包含，
+  `and`/`or`/`not` 宏遮蔽了 C++ 关键字，函数指针被隐式转换成 `void *`。
+- Custom formulas are now a Windows-only option; configuring them elsewhere
+  stops with a clear message instead of failing inside the JIT sources.
+  自定义公式现在仅支持 Windows；在其他平台启用时会在配置阶段给出明确错误，
+  而不是在 JIT 源码中编译失败。
+- A vcpkg tree next to the sources is found again after switching compilers,
+  so the Win32 build no longer stops at `GL/glext.h`.
+  切换编译器后仍能找到源码旁的 vcpkg 目录，Win32 构建不再卡在 `GL/glext.h`。
+- The GCC and Clang builds link the platform thread library, so Clang on
+  MinGW no longer stops at `pthread_mutex_lock`.
+  GCC/Clang 构建会链接平台线程库，MinGW 下的 Clang 不再卡在 `pthread_mutex_lock`。
+- The About dialog now lists the maintained fork first and is tall enough to
+  show all source links instead of clipping them.
+  关于对话框把维护者的仓库链接放在最前，并加大了高度，所有源码链接都能显示。
 - Saving now writes a temporary file next to the target and renames it into
   place only after the whole location has been written, so a crash or a full
   disk no longer truncates the previous save to zero bytes.

@@ -194,8 +194,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dea
 ```
 ./build.sh --compiler clang --test
 ./build.sh --frontend sdl --compiler clang
-./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
+./build.sh --clean
 ```
+
+自定义公式（`-DENABLE_CUSTOM_FORMULA=ON`）仅支持 Windows：JIT 生成的是 Windows
+x64 机器码。该构建还需要启用 MPC 支持的 SymEngine、mpfr 和 mpc。
 
 ## 前端
 
