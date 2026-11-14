@@ -214,8 +214,21 @@ cmake --build --preset linux-deb
 ```
 
 安装后程序位于 `/usr/bin/Imagina`，字体、许可证和文档位于 `/usr/share/imagina`
-与 `/usr/share/doc/imagina`，并附带 desktop 文件和图标。Flatpak 使用同一套 system
-布局（配置时加 `-DCMAKE_INSTALL_PREFIX=/app`）。
+与 `/usr/share/doc/imagina`，并附带 desktop 文件和图标。
+
+Flatpak 用 `packaging/flatpak/` 里的 manifest 从同一份源码构建：
+
+```
+flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.flatpak.Builder
+flatpak run --command=flatpak-builder org.flatpak.Builder \
+    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
+    packaging/flatpak/org.imagina.Imagina.yml
+flatpak run org.imagina.Imagina
+```
+
+manifest 会从上游源码构建 SDL3、Dear ImGui、GLM、GMP 和字体，并使用同一套
+system 布局（前缀为 `/app`）。
 
 Linux 上 SDL 前端在安装了 `zenity` 时用它显示打开/保存对话框（WSL 下推荐），
 否则使用 SDL 的 XDG desktop portal。若 portal 服务启动时没有 `DISPLAY`，对话框

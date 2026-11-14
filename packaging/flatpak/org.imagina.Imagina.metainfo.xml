@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.imagina.Imagina</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>Imagina</name>
+  <summary>Fast fractal renderer and explorer</summary>
+  <description>
+    <p>
+      Imagina renders and explores the Mandelbrot and Julia sets with perturbation theory, arbitrary precision arithmetic and a zoom sequence exporter. It can navigate very deep zooms, save locations, images and lossless raw maps, and export frames for animation.
+    </p>
+    <p>
+      This is a maintained fork of the original Imagina, with a Linux front-end and packaging for the common desktop formats.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.imagina.Imagina.desktop</launchable>
+  <url type="homepage">https://github.com/MarchBeta2087/Imagina</url>
+  <url type="bugtracker">https://github.com/MarchBeta2087/Imagina/issues</url>
+  <developer id="io.github.marchbeta2087">
+    <name>MarchBeta2087</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.3" date="2026-11-13"/>
+  </releases>
+</component>

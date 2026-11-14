@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Imagina
+Name[zh_CN]=Imagina 分形浏览器
+GenericName=Fractal explorer
+GenericName[zh_CN]=分形浏览器
+Comment=Fast fractal renderer and explorer
+Comment[zh_CN]=快速分形渲染与探索工具
+Exec=Imagina
+Icon=org.imagina.Imagina
+Terminal=false
+Categories=Graphics;
+Keywords=fractal;mandelbrot;julia;
+StartupNotify=true
