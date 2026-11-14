@@ -7,6 +7,25 @@
 #include <stdint.h>
 #include <complex>
 
+// Storage type of the 256 bit vectors.  MSVC and Clang keep the native
+// intrinsic types: they keep the stack aligned where it is needed.  The GCC
+// Windows port only guarantees the 16 byte alignment of the x64 ABI and cannot
+// raise -mpreferred-stack-boundary above 4, yet it places temporaries of more
+// strictly aligned types (by-value arguments, return values and compound
+// literals) on 16 byte boundaries and then uses aligned 256 bit moves such as
+// "vmovapd %ymm, offset(%rsp)" to access them, which raises #GP.  Declaring the
+// storage as a 32 byte vector with 16 byte alignment makes Windows GCC treat
+// those objects as only 16 byte aligned and emit unaligned moves; the
+// computation itself still runs on full ymm registers.  GCC on the SysV ABI
+// (Linux, the BSDs) can realign the stack, so it keeps the native types.
+#if defined(_MSC_VER) || defined(__clang__) || !defined(_WIN32)
+typedef __m256d Vec256Double;
+typedef __m256i Vec256Int64;
+#else
+typedef double Vec256Double __attribute__((vector_size(32), aligned(16)));
+typedef int64_t Vec256Int64 __attribute__((vector_size(32), aligned(16)));
+#endif
+
 struct mask64x4;
 struct dvec4;
 struct DExpVec4;
@@ -26,7 +45,7 @@ using complexvec4 = std::complex<typename Vector4Selector<T>::type>;
 
 struct mask64x4 {
 	union {
-		__m256d ymm;
+		Vec256Double ymm;
 		uint64_t data[4];
 	};
 
@@ -66,7 +85,7 @@ inline std::ostream &operator<< (std::ostream &stream, const mask64x4 &mask) {
 
 struct dvec4 {
 	union {
-		__m256d ymm;
+		Vec256Double ymm;
 		double data[4];
 		struct {
 			double x, y, z, w;
@@ -130,7 +149,7 @@ struct dvec4 {
 
 struct dvec4::mul_result {
 	struct {
-		__m256d Operand1, Operand2;
+		Vec256Double Operand1, Operand2;
 		inline operator __m256d() { return _mm256_mul_pd(Operand1, Operand2); }
 	} ymm;
 	inline mul_result(const __m256d &a, const __m256d &b) : ymm{ a, b } {}
@@ -217,7 +236,7 @@ inline dvec4 floor(const dvec4 &n) {
 
 struct i64vec4 {
 	union {
-		__m256i ymm;
+		Vec256Int64 ymm;
 		int64_t data[4];
 		struct {
 			int64_t x, y, z, w;

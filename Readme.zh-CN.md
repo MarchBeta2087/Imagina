@@ -182,6 +182,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 `in
 powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui 前端
 ```
 
+显式传入 `-Compiler`/`--compiler` 时，构建目录为 `build\<编译器>`（`build\msvc`、
+`build\gcc`、`build\clang` 等），切换编译器不会复用旧的 CMake 缓存。不指定编译器时
+仍使用 `build`；`-BuildDir`/`--build-dir` 可覆盖这两种默认值。
+
 不使用 vcpkg（或加 `-NoVcpkg`）时，依赖从脚本旁边的 `include\` 和 `lib\` 读取；
 `build.ps1` 开头的注释列出了需要哪些文件、MPIR/libpng/zlib 如何构建。MinGW-w64 也可以
 直接使用 MSYS2 的包（`mingw-w64-ucrt-x86_64-gmp`、`-libpng`、`-zlib`、`-mesa`），CI 就是
@@ -194,8 +198,59 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dea
 ```
 ./build.sh --compiler clang --test
 ./build.sh --frontend sdl --compiler clang
-./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
+./build.sh --clean
 ```
+
+显式传入 `-Compiler`/`--compiler` 时，构建目录为 `build/<编译器>`
+（`build/msvc`、`build/gcc`、`build/clang` 等），切换编译器不会复用旧的 CMake
+缓存。不指定编译器时仍使用 `build`；`-BuildDir`/`--build-dir` 可覆盖这两种默认值。
+
+同一份源码可以打出 Debian/Ubuntu 包：
+
+```
+cmake --preset linux-deb
+cmake --build --preset linux-deb
+(cd build/linux-deb && cpack -G DEB)
+```
+
+安装后程序位于 `/usr/bin/Imagina`，字体、许可证和文档位于 `/usr/share/imagina`
+与 `/usr/share/doc/imagina`，并附带 desktop 文件和图标。
+
+Flatpak 用 `packaging/flatpak/` 里的 manifest 从同一份源码构建：
+
+```
+flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.flatpak.Builder
+flatpak run --command=flatpak-builder org.flatpak.Builder \
+    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
+    packaging/flatpak/io.github.marchbeta2087.Imagina.yml
+flatpak run io.github.marchbeta2087.Imagina
+```
+
+manifest 会从上游源码构建 SDL3、Dear ImGui、GLM、GMP 和字体，并使用同一套
+system 布局（前缀为 `/app`）。
+
+Linux 上 SDL 前端在安装了 `zenity` 时用它显示打开/保存对话框（WSL 下推荐），
+否则使用 SDL 的 XDG desktop portal。若 portal 服务启动时没有 `DISPLAY`，对话框
+不会出现；此时请安装 `zenity`，或把 `DISPLAY` 导入用户会话。
+
+自定义公式（`-DENABLE_CUSTOM_FORMULA=ON`）仅支持 Windows：JIT 生成的是 Windows
+x64 机器码。该构建还需要启用 MPC 支持的 SymEngine、mpfr 和 mpc。
+
+### Windows MSI
+
+用 WiX 3.14（candle/light）可以在同一个构建目录里生成 MSI：
+
+```
+cmake --preset windows-msvc -DIMAGINA_WIX_VERSION=3 -DCPACK_WIX_ROOT="C:/Program Files (x86)/WiX Toolset v3.14"
+cmake --build --preset windows-msvc
+cd build/windows-msvc
+cpack -G WIX
+```
+
+`-DIMAGINA_WIX_VERSION=4`（或默认的 `auto`，当 PATH 里有 `wix.exe` 而没有
+`candle` 时）改用 WiX 4 及以上。WiX 6/7 运行前需要接受其 Open Source
+Maintenance Fee EULA；release 工作流使用 WiX 3.14。
 
 ## 前端
 
@@ -220,7 +275,10 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
   部分的 `_mm256_*` 内建函数不受影响。链接时优化默认关闭（可加
   `-DIMAGINA_ENABLE_LTO=ON` 试用）。
 * `IMAGINA_THREADS=<n>` 限制工作线程数。
-* `IMAGINA_CRASH_REPORT=1` 安装异常处理器，崩溃时打印故障模块偏移与栈回溯（Windows）。
+* 崩溃报告写入用户目录：Windows 为 `%LOCALAPPDATA%\Imagina\Imagina-crash.txt`，
+  Linux/BSD 为 `$XDG_STATE_HOME/imagina/Imagina-crash.txt`（或
+  `~/.local/state/imagina/`）。目录不可写时退回临时目录，错误框会给出完整路径，
+  同时把栈打印到 stderr。
 * SDL 前端支持 `--frames <n>`（跑 n 帧后退出）、`--screenshot <file.bmp>`、
   `--open <file>`、`--save <file>`（按扩展名决定格式）、`--windows`（打开全部对话框）
   和 `--stress`（每帧缩放），因此渲染、文件格式和界面都能在没有人工点击的情况下测试：
@@ -245,12 +303,18 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 
 版本号只有一处来源：`CMakeLists.txt` 里的 `project(... VERSION ...)`；`--version`、
 「关于」对话框和 Windows 版本资源都由它生成（`vcpkg.json` 里为 manifest 重复了一次）。
-目前是 `1.0.0`。发布使用 `vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在
+发布使用 `vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在
 [CHANGELOG.md](CHANGELOG.md)。
+
+打标签之前，先更新 `CMakeLists.txt` 和 `vcpkg.json` 里的版本号，并把 CHANGELOG 中
+`[Unreleased]` 下的条目移入新的 `## [x.y.z] - YYYY-MM-DD` 小节。推送 `vX.Y.Z`
+标签会触发 `release` 工作流：构建 Linux 与 Windows 压缩包、生成 `SHA256SUMS`，
+连同自动生成的发布说明一起附到 **草稿** 形式的 GitHub Release 上。标签与两处版本号
+不一致时工作流会失败。
 
 ```
 $ ./build/Imagina --version
-Imagina 1.0.0 (SDL front-end)
+Imagina x.y.z (SDL front-end)
 ```
 
 ## 许可证

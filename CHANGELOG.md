@@ -10,6 +10,130 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-15
+
+### Added / 新增
+
+- Debian/Ubuntu package: `cmake --preset linux-deb` + `cpack -G DEB` builds an
+  `imagina` package that installs the executable to `/usr/bin`, the font and
+  docs under `/usr/share`, and a desktop entry and icon; the release workflow
+  attaches the `.deb` to the draft release next to the tarball.
+  Debian/Ubuntu 安装包：`cmake --preset linux-deb` + `cpack -G DEB` 生成 `imagina`
+  包，程序安装到 `/usr/bin`，字体和文档安装到 `/usr/share`，并附带 desktop
+  文件和图标；release 工作流会把 `.deb` 和压缩包一起附到草稿 Release 上。
+- Windows MSI built with WiX (`cpack -G WIX`); the Win32 front-end now has
+  `install()` rules for the executable, the vcpkg runtime DLLs and the docs, and
+  the release workflow attaches the MSI next to the zip.
+  Windows MSI：用 WiX 生成（`cpack -G WIX`）；Win32 前端新增了 exe、vcpkg
+  运行时 DLL 和文档的 `install()` 规则，release 工作流会把 MSI 和 zip 一起附上。
+- Flatpak manifest (`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`): builds SDL3,
+  Dear ImGui, GLM, GMP and the CJK font from source and installs the SDL
+  front-end, desktop file, AppStream metadata and icons under `/app`.
+  Flatpak manifest（`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`）：从源码构建
+  SDL3、Dear ImGui、GLM、GMP 和字体，把 SDL 前端、desktop 文件、AppStream 元数据
+  和图标安装到 `/app`。
+
+### Fixed / 修复
+
+- The Windows GCC build no longer crashes when zooming in far enough to
+  render the Julia set: GCC on Windows only guarantees a 16-byte stack
+  alignment, but it placed 32-byte aligned temporaries (the by-value
+  `std::complex<dvec4>` arguments of the evaluator) on 16-byte boundaries and
+  then accessed them with `vmovapd %ymm`, which faults with #GP.  The vector
+  storage types now carry a 16-byte alignment under GCC on Windows, so those
+  moves are unaligned, while the computation still uses full ymm registers.
+  MSVC, Clang and the Linux/BSD GCC builds keep the native intrinsic types.
+  Windows 上的 GCC 构建在放大到需要渲染 Julia 集的倍数时不再崩溃：Windows 上的
+  GCC 只保证 16 字节栈对齐，却把需要 32 字节对齐的临时对象（求值器中按值传递的
+  `std::complex<dvec4>` 参数）放在 16 字节边界上，再用 `vmovapd %ymm` 访问，
+  触发 #GP。现在 Windows 下 GCC 的向量存储类型改为 16 字节对齐，这类访问会改用
+  非对齐指令，计算本身仍然使用完整的 ymm 寄存器；MSVC、Clang 以及 Linux/BSD 上
+  的 GCC 构建保持原生 intrinsic 类型不变。
+- `.im` files are portable between Windows and Linux again: the embedded
+  floating point exponent is stored in a fixed 32-bit field instead of `long`,
+  which is 4 bytes on Windows and 8 bytes on Linux.  Loading a save from the
+  other platform used to fail with "Error while loading the file".
+  `.im` 文件重新可以在 Windows 与 Linux 之间互通：内嵌浮点指数改为固定 32 位，
+  不再使用 `long`（Windows 为 4 字节、Linux 为 8 字节）。此前加载另一平台保存的
+  文件会报 “Error while loading the file”。
+- Text `.imt` files are parsed as decimal again: the coordinates and `Size` were
+  read as base 16, which made fractional coordinates wrong and rejected values
+  such as `2e-40`.
+  文本 `.imt` 文件重新按十进制解析：此前坐标和 `Size` 被当作十六进制，导致小数
+  坐标错误，并拒绝 `2e-40` 这类值。
+- `--save` now waits for the reference task as well as the pixels, so a high
+  magnification view cannot be written without its reference section.
+  `--save` 现在会等待参考轨道任务和像素都完成，高倍视图不会再写成缺少参考段
+  的文件。
+- On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it
+  is available, because an XDG desktop portal started without `DISPLAY` never
+  answers (common under WSLg).
+  Linux 上 SDL 前端在可用时使用 `zenity` 显示打开/保存对话框；启动时没有
+  `DISPLAY` 的 XDG portal 不会响应（WSLg 下常见）。
+- Added `tests/save_roundtrip.py`, which saves, reloads and saves again at a
+  high magnification; CI runs it under Xvfb.
+  新增 `tests/save_roundtrip.py`，在高倍位置保存、重新加载并再次保存；CI 会在
+  Xvfb 下运行。
+- An explicit compiler now gets its own build directory: `build.ps1 -Compiler`
+  and `build.sh --compiler` use `build/<compiler>` (`build/msvc`, `build/gcc`,
+  `build/clang`), and both scripts refuse to reuse a CMake cache configured for
+  a different compiler.
+  显式指定编译器时使用独立构建目录：`build.ps1 -Compiler` 和
+  `build.sh --compiler` 使用 `build/<编译器>`（`build/msvc`、`build/gcc`、
+  `build/clang`），并拒绝复用为其他编译器配置的 CMake 缓存。
+- The optional custom formula build did not compile with GCC or Clang: the
+  encoder headers relied on transitive includes, the `and`/`or`/`not` macros
+  shadowed C++ keywords, and a function pointer was converted to `void *`
+  implicitly.
+  可选的自定义公式构建在 GCC/Clang 下无法编译：编码器头文件依赖间接包含，
+  `and`/`or`/`not` 宏遮蔽了 C++ 关键字，函数指针被隐式转换成 `void *`。
+- Custom formulas are now a Windows-only option; configuring them elsewhere
+  stops with a clear message instead of failing inside the JIT sources.
+  自定义公式现在仅支持 Windows；在其他平台启用时会在配置阶段给出明确错误，
+  而不是在 JIT 源码中编译失败。
+- A vcpkg tree next to the sources is found again after switching compilers,
+  so the Win32 build no longer stops at `GL/glext.h`.
+  切换编译器后仍能找到源码旁的 vcpkg 目录，Win32 构建不再卡在 `GL/glext.h`。
+- The GCC and Clang builds link the platform thread library, so Clang on
+  MinGW no longer stops at `pthread_mutex_lock`.
+  GCC/Clang 构建会链接平台线程库，MinGW 下的 Clang 不再卡在 `pthread_mutex_lock`。
+- The About dialog now lists the maintained fork first and is tall enough to
+  show all source links instead of clipping them.
+  关于对话框把维护者的仓库链接放在最前，并加大了高度，所有源码链接都能显示。
+- Saving a high magnification location whose reference had only double
+  precision linear approximation stages threw an exception instead of
+  writing the file.  The double orbit is stored in that case.
+  保存高倍位置时，如果参考的线性近似阶段全部是双精度，旧代码会抛出异常而无法
+  写文件；现在改为保存双精度轨道。
+- Saving now writes a temporary file next to the target and renames it into
+  place only after the whole location has been written, so a crash or a full
+  disk no longer truncates the previous save to zero bytes.
+  保存时先写入目标旁的临时文件，写入完成后再替换目标；崩溃或磁盘写满不再把原有
+  存档截断为 0 字节。
+- Saving a location that does not need a reference orbit (the starting view,
+  or an orbit shorter than eight iterations) read an empty orbit array and
+  crashed.  These locations are now written without a reference section and
+  regenerate it when they are opened.
+  保存不需要参考轨道的位置（初始视图，或轨道短于 8 次迭代）时会读取空的轨道
+  数组并崩溃；现在这类位置不写入参考轨道，打开时会自动重新生成。
+- The transformation dialog wrote one byte past a 32 byte stack buffer
+  (`buffer[32] = 0`) and corrupted the return address, so pressing OK crashed.
+  Flip imaginary axis only made the bad frame more likely to be hit.
+  变换对话框在 32 字节栈缓冲区的末尾越界写入（`buffer[32] = 0`），破坏返回地址，
+  按下「确定」即崩溃；勾选「Flip imaginary axis」只是让问题更容易触发。
+- Crash reports now go to a writable per-user directory instead of next to the
+  executable: `%LOCALAPPDATA%\Imagina\Imagina-crash.txt` on Windows and
+  `$XDG_STATE_HOME/imagina/` (or `~/.local/state/imagina/`) on Linux/BSD.  If
+  that directory cannot be created or written the report falls back to the
+  temporary directory, and the error dialog shows the path actually used.
+  崩溃报告改为写入用户可写目录，不再写在可执行文件旁：Windows 为
+  `%LOCALAPPDATA%\Imagina\Imagina-crash.txt`，Linux/BSD 为
+  `$XDG_STATE_HOME/imagina/`（或 `~/.local/state/imagina/`）。目录创建或写入失败
+  时退回临时目录，错误框会显示实际使用的路径。
+- The iteration limit and image size dialogs passed no size argument for `%c` to
+  `sscanf_s`, which MSVC reports as C4473.
+  迭代上限与图像尺寸对话框的 `sscanf_s` 没有给 `%c` 传长度参数，MSVC 会报 C4473。
+
 ## [1.0.3] - 2026-11-13
 
 ### Fixed / 修复
@@ -178,7 +302,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.4...dev
+[1.0.4]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1

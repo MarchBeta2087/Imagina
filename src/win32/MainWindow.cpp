@@ -343,19 +343,15 @@ void SaveImage(bool raw = false) {
 static const wchar_t AboutNotice[] =
 	L"Copyright (C) 2023 Zhuoran and contributors (see the source repository).\r\n"
 	L"\r\n"
-	L"This program is free software: you can redistribute it and/or modify it under the\r\n"
-	L"terms of the GNU Affero General Public License as published by the Free Software\r\n"
-	L"Foundation, either version 3 of the License, or (at your option) any later version.\r\n"
-	L"It is distributed in the hope that it will be useful, but without any warranty;\r\n"
-	L"without even the implied warranty of merchantability or fitness for a particular\r\n"
-	L"purpose.  The full licence text is shown below.\r\n"
+	L"Maintained fork:  https://github.com/MarchBeta2087/Imagina\r\n"
+	L"Original program: https://github.com/5E-324/Imagina\r\n"
+	L"Based on:         https://github.com/haveyouwantto/Imagina\r\n"
+	L"\r\n"
+	L"This program is free software under the GNU AGPL v3 or later, without any\r\n"
+	L"warranty.  The full licence text is shown below.\r\n"
 	L"\r\n"
 	L"Modified version (2026): zoom sequence export with lossless raw map files\r\n"
-	L"(*.rawz), the raw map codec and the command line and Python tools were added.\r\n"
-	L"\r\n"
-	L"Source of the original program:  https://github.com/5E-324/Imagina\r\n"
-	L"Source of this version:          https://github.com/haveyouwantto/Imagina\r\n"
-	L"This fork (SDL3 front-end, zoom export): https://github.com/MarchBeta2087/Imagina\r\n";
+	L"(*.rawz), the raw map codec and the command line and Python tools.\r\n";
 
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
@@ -539,7 +535,7 @@ INT_PTR SetLocationProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam
 							if (GetDlgItemTextA(hWndDlg, IDC_ITERATIONS, Buffer, Length)) {
 								size_t NewItLim;
 								char Dummy;
-								if (sscanf_s(Buffer, "%zu%c", &NewItLim, &Dummy) == 1) {
+								if (sscanf_s(Buffer, "%zu%c", &NewItLim, &Dummy, 1u) == 1) {
 									Global::ItLim = std::max(UINT64_C(2), NewItLim);
 								} else {
 									throw std::invalid_argument("Iterations");
@@ -599,7 +595,7 @@ INT_PTR SetIterationLimitProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM 
 					if (GetDlgItemTextA(hWndDlg, IDC_EDIT1, Buffer, Length)) {
 						size_t NewItLim;
 						char Dummy;
-						if (sscanf_s(Buffer, "%zu%c", &NewItLim, &Dummy) == 1) {
+						if (sscanf_s(Buffer, "%zu%c", &NewItLim, &Dummy, 1u) == 1) {
 							Global::ItLim = std::max(UINT64_C(2), NewItLim);
 							FContext.ParameterChanged = true;
 						}
@@ -640,24 +636,26 @@ INT_PTR TransformProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam
 		case WM_COMMAND: {
 			switch (LOWORD(wParam)) {
 				case IDOK: {
-					char buffer[32];
-					buffer[32] = 0;
+					// Written by GetDlgItemTextA below: indexing [32] of a 32 byte
+					// array was one past the end and corrupted the stack on OK.
+					char buffer[32] = {};
+					char *const end = buffer + sizeof(buffer);
 					SRReal newRotation, newStretchAngle, newStretchRatio;
 					try {
-						GetDlgItemTextA(hWndDlg, IDC_ROTATION, buffer, 31);
-						newRotation = std::stof(buffer);
+						GetDlgItemTextA(hWndDlg, IDC_ROTATION, buffer, int(end - buffer));
+						newRotation = std::stod(buffer);
 
-						GetDlgItemTextA(hWndDlg, IDC_STRETCH_ANGLE, buffer, 31);
-						newStretchAngle = std::stof(buffer);
+						GetDlgItemTextA(hWndDlg, IDC_STRETCH_ANGLE, buffer, int(end - buffer));
+						newStretchAngle = std::stod(buffer);
 
-						GetDlgItemTextA(hWndDlg, IDC_STRETCH_RATIO, buffer, 31);
-						newStretchRatio = std::stof(buffer);
+						GetDlgItemTextA(hWndDlg, IDC_STRETCH_RATIO, buffer, int(end - buffer));
+						newStretchRatio = std::stod(buffer);
 
 						if (newStretchRatio == 0.0) throw std::invalid_argument("StretchRatio");
-					} catch (std::invalid_argument) {
+					} catch (const std::invalid_argument &) {
 						MessageBoxW(hWndDlg, TrW("Value invalid.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
-					} catch (std::out_of_range) {
+					} catch (const std::out_of_range &) {
 						MessageBoxW(hWndDlg, TrW("Value out of range.").c_str(), nullptr, MB_OK | MB_ICONERROR);
 						break;
 					}
@@ -753,10 +751,10 @@ INT_PTR SetImageSizeProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lPa
 					char Dummy;
 
 					if (!GetDlgItemTextA(hWndDlg, IDC_WIDTH, Buffer, 32)) goto Cancel;
-					if (sscanf_s(Buffer, "%zu%c", &NewWidth, &Dummy) != 1) goto Cancel;
+					if (sscanf_s(Buffer, "%zu%c", &NewWidth, &Dummy, 1u) != 1) goto Cancel;
 
 					if (!GetDlgItemTextA(hWndDlg, IDC_HEIGHT, Buffer, 32)) goto Cancel;
-					if (sscanf_s(Buffer, "%zu%c", &NewHeight, &Dummy) != 1) goto Cancel;
+					if (sscanf_s(Buffer, "%zu%c", &NewHeight, &Dummy, 1u) != 1) goto Cancel;
 					
 					FContext.SetResolution(NewWidth, NewHeight);
 

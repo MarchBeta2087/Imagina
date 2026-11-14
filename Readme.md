@@ -198,6 +198,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # old includ
 powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui front-end
 ```
 
+Passing `-Compiler`/`--compiler` puts the build in `build\<compiler>` (`build\msvc`,
+`build\gcc`, `build\clang`, ...) so switching compilers does not reuse a stale
+CMake cache.  Without an explicit compiler the directory stays `build`;
+`-BuildDir`/`--build-dir` overrides both.
+
 Without vcpkg (or with `-NoVcpkg`) the dependencies are taken from `include\` and
 `lib\` next to the script; `build.ps1`'s header lists what is needed and how the
 MPIR/libpng/zlib sources are built.  MinGW-w64 can also use the MSYS2 packages
@@ -211,8 +216,67 @@ job does.
 ```
 ./build.sh --compiler clang --test
 ./build.sh --frontend sdl --compiler clang
-./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
+./build.sh --clean
 ```
+
+Passing `-Compiler`/`--compiler` puts the build in `build/<compiler>`
+(`build/msvc`, `build/gcc`, `build/clang`, ...) so switching compilers does not
+reuse a stale CMake cache.  Without an explicit compiler the directory stays
+`build`; `-BuildDir`/`--build-dir` overrides both.
+
+A Debian/Ubuntu package can be built from the same sources:
+
+```
+cmake --preset linux-deb
+cmake --build --preset linux-deb
+(cd build/linux-deb && cpack -G DEB)
+```
+
+It installs the executable to `/usr/bin/Imagina`, the font, licence and docs to
+`/usr/share/imagina` and `/usr/share/doc/imagina`, plus a desktop entry and an
+icon.
+
+A Flatpak is built from the same sources with the manifest in
+`packaging/flatpak/`:
+
+```
+flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.flatpak.Builder
+flatpak run --command=flatpak-builder org.flatpak.Builder \
+    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
+    packaging/flatpak/io.github.marchbeta2087.Imagina.yml
+flatpak run io.github.marchbeta2087.Imagina
+```
+
+The manifest builds SDL3, Dear ImGui, GLM, GMP and the CJK font from their
+upstream sources and uses the same system install layout with `/app` as the
+prefix.
+
+On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it is
+installed (recommended under WSL), and SDL's XDG desktop portal otherwise.  A
+portal service that was started without `DISPLAY` cannot show a dialog; install
+`zenity` or import `DISPLAY` into the user session in that case.
+
+Custom formulas (`-DENABLE_CUSTOM_FORMULA=ON`) are Windows-only: the JIT
+emits Windows x64 machine code.  That build also needs SymEngine with MPC
+support, mpfr and mpc.
+
+### Windows MSI
+
+An MSI can be built from the same configured tree with WiX 3.14
+(candle/light):
+
+```
+cmake --preset windows-msvc -DIMAGINA_WIX_VERSION=3 -DCPACK_WIX_ROOT="C:/Program Files (x86)/WiX Toolset v3.14"
+cmake --build --preset windows-msvc
+cd build/windows-msvc
+cpack -G WIX
+```
+
+`-DIMAGINA_WIX_VERSION=4` (or the default `auto` when `wix.exe` is on PATH and
+`candle` is not) uses WiX 4 or later instead.  WiX 6/7 ask you to accept their
+Open Source Maintenance Fee EULA before they run; the release workflow uses
+WiX 3.14.
 
 ## Front-ends
 
@@ -240,8 +304,11 @@ Notes:
   computation are unaffected.  Link time optimisation is off by default
   (`-DIMAGINA_ENABLE_LTO=ON` to try it).
 * `IMAGINA_THREADS=<n>` limits the worker pool.
-* `IMAGINA_CRASH_REPORT=1` installs an exception handler that prints the faulting
-  module offset and a stack walk (Windows).
+* A crash report is written to `%LOCALAPPDATA%\Imagina\Imagina-crash.txt` on
+  Windows and to `$XDG_STATE_HOME/imagina/Imagina-crash.txt` (or
+  `~/.local/state/imagina/`) on Linux/BSD.  When that directory cannot be
+  written the temporary directory is used instead, and the error dialog shows
+  the full path.  The stack is also printed to stderr.
 * The SDL front-end accepts `--frames <n>` (quit after n frames),
   `--screenshot <file.bmp>`, `--open <file>`, `--save <file>` (the extension picks
   the format), `--windows` (open every dialog) and `--stress` (zoom every frame),
@@ -268,12 +335,20 @@ back with a pull request.  See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The version lives in one place, the `project(... VERSION ...)` command in
 `CMakeLists.txt`; `--version`, the About dialog and the Windows version resource
-all come from it (`vcpkg.json` repeats it for the manifest).  It is `1.0.0`.  Releases use `vMAJOR.MINOR.PATCH` tags, and every release is
-described in [CHANGELOG.md](CHANGELOG.md).
+all come from it (`vcpkg.json` repeats it for the manifest).  Releases use
+`vMAJOR.MINOR.PATCH` tags, and every release is described in
+[CHANGELOG.md](CHANGELOG.md).
+
+Before tagging, bump the version in `CMakeLists.txt` and `vcpkg.json` and move
+the `[Unreleased]` CHANGELOG entries into a new `## [x.y.z] - YYYY-MM-DD`
+section.  Pushing a `vX.Y.Z` tag runs the `release` workflow: it builds the
+Linux and Windows archives, writes `SHA256SUMS` and attaches both, together
+with generated release notes, to a **draft** GitHub release.  The workflow
+stops when the tag does not match the two version fields.
 
 ```
 $ ./build/Imagina --version
-Imagina 1.0.0 (SDL front-end)
+Imagina x.y.z (SDL front-end)
 ```
 
 ## License

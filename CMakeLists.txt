@@ -2,11 +2,26 @@ cmake_minimum_required (VERSION 3.16)
 
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource (see the Readme, "Versioning").
-project ("Imagina" VERSION 1.0.3 LANGUAGES C CXX)
+project ("Imagina" VERSION 1.0.4 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
+if(ENABLE_CUSTOM_FORMULA AND NOT WIN32)
+	message(FATAL_ERROR
+		"ENABLE_CUSTOM_FORMULA is only supported on Windows: the custom formula "
+		"JIT emits Windows x64 machine code.  Configure without it.")
+endif()
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
 option(BUILD_CODEC_TEST "Build the raw map codec round trip test" OFF)
+
+# "portable" is the flat layout of the release tarball (everything next to the
+# executable); "system" is the FHS layout a distribution package needs
+# (bin/, share/doc, share/imagina, share/applications, share/icons).
+set(IMAGINA_INSTALL_LAYOUT "portable" CACHE STRING "Install layout: portable or system")
+set_property(CACHE IMAGINA_INSTALL_LAYOUT PROPERTY STRINGS portable system)
+
+# The MSI is built with WiX.  "auto" uses wix.exe when it is on PATH (WiX 4
+# and later) and candle/light otherwise (WiX 3); set 3 or 4+ to force one.
+set(IMAGINA_WIX_VERSION "auto" CACHE STRING "WiX major version for the MSI: auto, 3 or 4+")
 
 # Front-end: the Win32 one (window, menus and dialogs from MainWindow.cpp) or
 # the portable SDL3 + Dear ImGui one.  The Win32 front-end only builds on
@@ -56,6 +71,20 @@ endif()
 # vcpkg only puts its include directory on the search path through imported
 # targets, and this project also includes bare headers (GL/glext.h, glm/...), so
 # add the installed tree explicitly when the toolchain tells us where it is.
+# A vcpkg tree next to the sources is used even when the toolchain did not set
+# VCPKG_INSTALLED_DIR (switching the compiler invalidates the CMake cache, and
+# the toolchain does not always run again on the re-configure).
+file(GLOB _imagina_local_vcpkg_includes
+	"${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/*/include"
+	"${CMAKE_BINARY_DIR}/vcpkg_installed/*/include")
+foreach(_imagina_local_vcpkg_include ${_imagina_local_vcpkg_includes})
+	get_filename_component(_imagina_local_vcpkg_root "${_imagina_local_vcpkg_include}" DIRECTORY)
+	list(APPEND INCLUDE_PATH "${_imagina_local_vcpkg_include}")
+	if(EXISTS "${_imagina_local_vcpkg_root}/lib")
+		list(APPEND LIBRARY_PATH "${_imagina_local_vcpkg_root}/lib")
+	endif()
+endforeach()
+
 if(VCPKG_INSTALLED_DIR)
 	set(_imagina_vcpkg_triplet "${VCPKG_TARGET_TRIPLET}")
 	if(NOT _imagina_vcpkg_triplet)
@@ -148,6 +177,8 @@ if(WIN32 AND BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 endif()
 find_package(ZLIB QUIET)
 find_package(PNG QUIET)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 # FindZLIB and FindPNG use ZLIB_LIBRARY/PNG_LIBRARY as their own cache variables,
 # so the fallback names are not written there: a value that is neither a target nor
 # a file on disk kept the package search from ever succeeding again (installing
@@ -327,6 +358,9 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	target_link_libraries(Imagina ${ZLIB_LIBRARY})
 	target_link_libraries(Imagina "dwmapi")
 	target_link_libraries(Imagina "dbghelp")
+	target_link_libraries(Imagina "shell32")
+	target_link_libraries(Imagina "ole32")
+	target_link_libraries(Imagina Threads::Threads)
 	target_link_libraries(Imagina ${MPIR_LIBRARY})
 
 	if(MPIR_USE_DLL)
@@ -358,6 +392,19 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 		target_link_options(Imagina PRIVATE -municode)
 		set_property(SOURCE "src/win32/Resource.rc" APPEND PROPERTY COMPILE_DEFINITIONS "IMAGINA_NO_EMBEDDED_MANIFEST")
 	endif()
+
+	# "cmake --install" and the MSI use the flat layout of the release archive.
+	# vcpkg deploys the runtime DLLs next to the executable at build time; the
+	# glob below runs at install time, so a fresh build tree works as well.
+	install(TARGETS Imagina RUNTIME DESTINATION .)
+	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
+	install(CODE "
+		file(GLOB _imagina_runtime_dlls \"${CMAKE_CURRENT_BINARY_DIR}/*.dll\")
+		if(_imagina_runtime_dlls)
+			file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}\" TYPE FILE FILES \${_imagina_runtime_dlls})
+		endif()
+	")
 endif()
 
 if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
@@ -439,7 +486,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 Threads::Threads ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)
@@ -447,11 +494,16 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	endif()
 
 	if(WIN32)
-		target_link_libraries(Imagina PRIVATE opengl32 dbghelp)
+		target_link_libraries(Imagina PRIVATE opengl32 dbghelp shell32 ole32)
 	else()
 		find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 		target_link_libraries(Imagina PRIVATE OpenGL::GL)
 		target_compile_definitions(Imagina PRIVATE IMAGINA_SDL)
+		# backtrace_symbols_fd() only names functions from the executable when its
+		# dynamic symbol table is exported.
+		if(UNIX AND NOT APPLE)
+			target_link_options(Imagina PRIVATE -rdynamic)
+		endif()
 	endif()
 
 	if(ENABLE_CUSTOM_FORMULA)
@@ -471,12 +523,35 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	# "cmake --install" produces the layout of the release archive: the executable,
 	# the licence and the Readme it shows, and the CJK font when it has been
 	# fetched into fonts/ (see tools/fetch-fonts.sh).
-	install(TARGETS Imagina RUNTIME DESTINATION .)
-	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
-	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
-	install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
-		install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
+	if(IMAGINA_INSTALL_LAYOUT STREQUAL "system")
+		include(GNUInstallDirs)
+		install(TARGETS Imagina RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+		install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/imagina)
+		install(FILES icon/LICENSE icon/README.md
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/icon)
+		install(FILES fonts/README.md fonts/LICENSE
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/fonts)
+		install(FILES icon/imagina_512.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps RENAME imagina.png)
+		install(FILES icon/imagina_256.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps RENAME imagina.png)
+		install(FILES icon/imagina_128.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps RENAME imagina.png)
+		install(FILES packaging/linux/imagina.desktop
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
+			install(FILES fonts/SarasaMonoSC-Regular.ttf
+				DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/fonts)
+		endif()
+	else()
+		install(TARGETS Imagina RUNTIME DESTINATION .)
+		install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+		install(FILES icon/LICENSE icon/README.md DESTINATION icon)
+		install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
+		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
+			install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
+		endif()
 	endif()
 endif()
 
@@ -491,4 +566,124 @@ endif()
 
 if(NOT BUILD_GUI AND NOT BUILD_CODEC_TEST)
 	message(WARNING "Nothing will be built: enable BUILD_GUI and/or BUILD_CODEC_TEST.")
+endif()
+
+# ---------------------------------------------------------------------------
+# Debian/Ubuntu package
+#
+# The system install layout above is what the package uses:
+#   cmake -B build-deb -DIMAGINA_FRONTEND=sdl -DIMAGINA_INSTALL_LAYOUT=system
+#   cmake --build build-deb
+#   cd build-deb && cpack -G DEB
+# The release workflow builds it next to the portable tarball.
+# ---------------------------------------------------------------------------
+if(UNIX AND NOT APPLE AND IMAGINA_FRONTEND STREQUAL "sdl")
+	set(CPACK_GENERATOR "DEB")
+	set(CPACK_PACKAGE_NAME "imagina")
+	set(CPACK_PACKAGE_VENDOR "Imagina")
+	set(CPACK_PACKAGE_CONTACT "MarchBeta2087")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast fractal renderer and explorer")
+	set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/MarchBeta2087/Imagina")
+	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+	set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+	set(CPACK_STRIP_FILES ON)
+	set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+	set(CPACK_DEBIAN_PACKAGE_NAME "imagina")
+	set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+	set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+	# SDL3 loads the GL, X11 and Wayland libraries at runtime, so dpkg-shlibdeps
+	# does not see them in the binary's NEEDED entries; the directly linked ones
+	# are listed explicitly to keep the package installable without them.
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS
+		"libc6, libgcc-s1, libstdc++6, libgmp10, libpng16-16, zlib1g, libglvnd0, libopengl0, libx11-6")
+	set(CPACK_DEBIAN_PACKAGE_RECOMMENDS
+		"libgl1, libgl1-mesa-dri, libwayland-client0, libdecor-0-0, zenity")
+	include(CPack)
+endif()
+
+# ---------------------------------------------------------------------------
+# Windows MSI
+#
+#   cmake --preset windows-msvc
+#   cmake --build --preset windows-msvc
+#   cd build/windows-msvc && cpack -G WIX
+#
+# WiX 3 (candle/light) and WiX 4+ (wix.exe) are supported.  "auto" picks
+# wix.exe when it is on PATH at configure time; -DIMAGINA_WIX_VERSION=3 or
+# -DCPACK_WIX_ROOT=... selects WiX 3 explicitly.
+# ---------------------------------------------------------------------------
+if(WIN32 AND IMAGINA_FRONTEND STREQUAL "win32")
+	# A caller may pass a native Windows path ("C:\Program Files (x86)\...");
+	# CPackConfig.cmake is a CMake script where backslashes are escapes.
+	if(CPACK_WIX_ROOT)
+		string(REPLACE "\\" "/" CPACK_WIX_ROOT "${CPACK_WIX_ROOT}")
+	endif()
+	set(CPACK_GENERATOR "WIX")
+	set(CPACK_PACKAGE_NAME "Imagina")
+	set(CPACK_PACKAGE_VENDOR "Imagina")
+	set(CPACK_PACKAGE_CONTACT "MarchBeta2087")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast fractal renderer and explorer")
+	set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/MarchBeta2087/Imagina")
+	set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+	set(CPACK_PACKAGE_FILE_NAME "Imagina-${PROJECT_VERSION}-win64")
+	set(CPACK_PACKAGE_INSTALL_DIRECTORY "Imagina")
+	set(CPACK_WIX_UPGRADE_GUID "60D1C0B8-3A77-451B-8565-999FEA50921C")
+	set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon/imagina.ico")
+	set(CPACK_WIX_PROGRAM_MENU_FOLDER "Imagina")
+	# Re-resolve every time: a previous configure may have cached a different
+	# WiX installation (or a wix.exe that was later removed).
+	unset(_imagina_wix_executable CACHE)
+	unset(_imagina_candle_executable CACHE)
+	unset(_imagina_light_executable CACHE)
+	if(IMAGINA_WIX_VERSION STREQUAL "auto")
+		# Prefer WiX 3: it is what the release uses, and WiX 6/7 require
+		# accepting the Open Source Maintenance Fee EULA before they run.
+		find_program(_imagina_auto_candle NAMES candle)
+		if(_imagina_auto_candle)
+			set(CPACK_WIX_VERSION 3)
+		else()
+			find_program(_imagina_auto_wix NAMES wix)
+			if(_imagina_auto_wix)
+				set(CPACK_WIX_VERSION 4)
+			else()
+				set(CPACK_WIX_VERSION 3)
+			endif()
+		endif()
+	else()
+		set(CPACK_WIX_VERSION "${IMAGINA_WIX_VERSION}")
+	endif()
+
+	# find_program() searches PATH before the CPACK_WIX_ROOT paths, and a WiX 4+
+	# install is commonly on PATH already.  Resolve the tools here and put the
+	# results into CPackConfig.cmake, so cpack uses the requested installation
+	# instead of whatever it finds first.
+	if(CPACK_WIX_VERSION VERSION_GREATER_EQUAL 4)
+		if(CPACK_WIX_ROOT)
+			find_program(_imagina_wix_executable NAMES wix PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+		endif()
+		if(NOT _imagina_wix_executable)
+			find_program(_imagina_wix_executable NAMES wix)
+		endif()
+		if(_imagina_wix_executable)
+			set(CPACK_WIX_EXECUTABLE "${_imagina_wix_executable}")
+		endif()
+	else()
+		if(CPACK_WIX_ROOT)
+			find_program(_imagina_candle_executable NAMES candle PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+			find_program(_imagina_light_executable NAMES light PATHS "${CPACK_WIX_ROOT}" PATH_SUFFIXES bin NO_DEFAULT_PATH)
+		endif()
+		if(NOT _imagina_candle_executable)
+			find_program(_imagina_candle_executable NAMES candle)
+		endif()
+		if(NOT _imagina_light_executable)
+			find_program(_imagina_light_executable NAMES light)
+		endif()
+		if(_imagina_candle_executable)
+			set(CPACK_WIX_CANDLE_EXECUTABLE "${_imagina_candle_executable}")
+		endif()
+		if(_imagina_light_executable)
+			set(CPACK_WIX_LIGHT_EXECUTABLE "${_imagina_light_executable}")
+		endif()
+	endif()
+	include(CPack)
 endif()

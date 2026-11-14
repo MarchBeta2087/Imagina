@@ -26,8 +26,10 @@ A clear and short description of the bug.
 - Front-end (`win32` or `sdl`):
 - OS and version:
 - Compiler and version:
-- If it crashed: start the SDL front-end with `IMAGINA_CRASH_REPORT=1` and paste the
-  report (module offset and stack walk).
+- If it crashed: attach `Imagina-crash.txt` from `%LOCALAPPDATA%\Imagina\`
+  (Windows) or `~/.local/state/imagina/` (Linux/BSD).  The error dialog shows the
+  full path; it falls back to the temporary directory when the user directory is
+  not writable.
 
 **Logs, screenshots or files / 日志、截图或文件**
 

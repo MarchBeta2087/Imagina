@@ -65,8 +65,10 @@ driven without clicking:
 ./build/Imagina.exe --stress --frames 120        # zoom/cancel stress test
 ```
 
-`IMAGINA_CRASH_REPORT=1` prints a stack walk if it crashes (see issue #6 for the
-currently known intermittent crash).
+A crash writes `Imagina-crash.txt` to `%LOCALAPPDATA%\Imagina\` on Windows and to
+`~/.local/state/imagina/` on Linux/BSD (or the temporary directory when the user
+directory is not writable); the path is also printed to stderr and shown in the
+error dialog.
 
 The Win32 front-end can only be built on Windows; say so in the pull request if you
 did not build it.
@@ -141,7 +143,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Test    # Windows
 ./build/Imagina.exe --stress --frames 120        # 缩放/取消压力测试
 ```
 
-崩溃时设置 `IMAGINA_CRASH_REPORT=1` 会打印栈回溯（当前已知的偶发崩溃见 issue #6）。
+崩溃报告写入 `%LOCALAPPDATA%\Imagina\`（Windows）或 `~/.local/state/imagina/`
+（Linux/BSD）；用户目录不可写时退回临时目录。路径同时打印到 stderr 并显示在错误框中。
 
 Win32 前端只能在 Windows 上构建；如果没有构建它，请在 PR 里注明。
 

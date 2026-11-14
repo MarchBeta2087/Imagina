@@ -5,3 +5,5 @@
 # Build scripts: the shell scripts must keep their LF endings.
 *.sh text eol=lf
 *.ps1 text eol=crlf
+# Binary save files used by the tests.
+tests/data/*.im binary

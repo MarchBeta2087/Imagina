@@ -1,0 +1,229 @@
+# Builds the release artifacts for a vMAJOR.MINOR.PATCH tag and attaches them to
+# a draft GitHub release.  Bump the version in CMakeLists.txt and vcpkg.json
+# first (see "Versioning" in the Readme); the check-version job refuses a tag
+# that does not match them.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    name: Check the tag matches the project version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare the tag with CMakeLists.txt and vcpkg.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          project=$(sed -n 's/^project *( *"Imagina" *VERSION *\([0-9][0-9.]*\).*/\1/p' CMakeLists.txt | head -n 1)
+          manifest=$(python3 -c "import json; print(json.load(open('vcpkg.json'))['version-string'])")
+          echo "tag=$tag cmake=$project vcpkg=$manifest"
+          test "$tag" = "$project"
+          test "$tag" = "$manifest"
+
+  linux:
+    name: Linux x86_64
+    runs-on: ubuntu-latest
+    needs: check-version
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config g++ \
+            libgmp-dev libpng-dev zlib1g-dev \
+            libgl1-mesa-dev libgl1-mesa-dri \
+            libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev
+
+      - name: Fetch the CJK font
+        run: bash tools/fetch-fonts.sh
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIMAGINA_FRONTEND=sdl \
+            -DBUILD_GUI=ON \
+            -DBUILD_CODEC_TEST=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Codec test
+        run: ./build/RawMapCodecTest
+
+      - name: Stage and archive
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          stage="dist/Imagina-$version-linux-x86_64"
+          cmake --install build --prefix "$stage"
+          test -x "$stage/Imagina"
+          test -f "$stage/fonts/SarasaMonoSC-Regular.ttf"
+          "$stage/Imagina" --version | grep -qx "Imagina $version (SDL front-end)"
+          tar -C dist -czf "dist/Imagina-$version-linux-x86_64.tar.gz" "Imagina-$version-linux-x86_64"
+          ls -l "$stage" dist
+
+      # Reuse the build tree: only the install layout changes, so the
+      # executable does not have to be compiled again.
+      - name: Build the .deb
+        run: |
+          set -eux
+          cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
+          cmake --build build --parallel
+          (cd build && cpack -G DEB)
+          cp build/*.deb dist/
+          dpkg-deb --info dist/*.deb
+          dpkg-deb --contents dist/*.deb | head -40
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+          if-no-files-found: error
+
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    needs: check-version
+    env:
+      # The image ships a shallow clone at C:/vcpkg, which cannot provide the
+      # builtin-baseline of the manifest, so a full clone goes into the workspace.
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install WiX
+        shell: pwsh
+        run: |
+          # The windows image already ships WiX 3.14; only install it when it is
+          # missing (a pinned choco install fails when a newer 3.14.x is there).
+          $root = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'WiX Toolset v3*' -ErrorAction SilentlyContinue |
+                  Select-Object -First 1 -ExpandProperty FullName
+          if (!$root) {
+            $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
+            if ($candle) { $root = Split-Path -Parent (Split-Path -Parent $candle.Source) }
+          }
+          if (!$root) {
+            choco install wixtoolset -y --no-progress
+            $root = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'WiX Toolset v3*' |
+                    Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (!$root) { throw 'WiX 3 was not found' }
+          "IMAGINA_WIX_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "WiX: $root"
+
+      - name: Configure (Win32 front-end)
+        shell: pwsh
+        run: >-
+          cmake --preset windows-msvc
+          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DIMAGINA_WIX_VERSION=3
+          "-DCPACK_WIX_ROOT=$env:IMAGINA_WIX_ROOT"
+
+      - name: Build (Win32 front-end)
+        run: cmake --build --preset windows-msvc --parallel
+
+      - name: Codec test
+        shell: pwsh
+        run: ./build/windows-msvc/RawMapCodecTest.exe
+
+      - name: Stage and archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $build = "build/windows-msvc"
+          $stage = "dist/Imagina-$version-win64"
+          New-Item -ItemType Directory -Force -Path $stage, "$stage/icon" | Out-Null
+
+          Copy-Item "$build/Imagina.exe" $stage
+          # vcpkg deploys the runtime DLLs (gmp, libpng, zlib) next to the
+          # executable; the Win32 front-end links no other external DLLs.
+          Copy-Item "$build/*.dll" $stage
+          Copy-Item LICENSE.txt, CHANGELOG.md, Readme.md, Readme.zh-CN.md $stage
+          Copy-Item icon/LICENSE, icon/README.md "$stage/icon"
+
+          # vcpkg deploys the runtime DLLs next to the executable; without them
+          # the staged application would not start on a clean machine.
+          foreach ($pattern in "gmp-*.dll", "gmpxx-*.dll", "libpng*.dll", "z*.dll") {
+            if (!(Get-ChildItem $stage -Filter $pattern -ErrorAction SilentlyContinue)) {
+              throw "no $pattern next to the executable"
+            }
+          }
+          & "$stage/Imagina.exe" --version | Select-String -SimpleMatch "Imagina $version" | Out-Null
+          Get-ChildItem $stage | Format-Table Name, Length
+          Compress-Archive -Path $stage -DestinationPath "dist/Imagina-$version-win64.zip"
+
+      - name: Build the MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Push-Location build/windows-msvc
+          try { cpack -G WIX } finally { Pop-Location }
+          $msi = Get-ChildItem build/windows-msvc/*.msi | Select-Object -First 1
+          if (!$msi) { throw "the MSI was not generated" }
+          Copy-Item $msi.FullName dist/
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win64
+          path: |
+            dist/*.zip
+            dist/*.msi
+          if-no-files-found: error
+
+  publish:
+    name: Draft the GitHub release
+    runs-on: ubuntu-latest
+    needs: [linux, windows]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Write the checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      # A draft, so the archives and the generated notes can be reviewed before
+      # the release is published.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Imagina ${GITHUB_REF_NAME#v}" \
+            --draft \
+            --generate-notes

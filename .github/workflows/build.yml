@@ -31,7 +31,8 @@ jobs:
             libgl1-mesa-dev libgl1-mesa-dri xvfb \
             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
             libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev \
-            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev
+            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev \
+            appstream python3-yaml
 
       - name: Configure
         run: |
@@ -80,6 +81,42 @@ jobs:
           assert black > 0.01, 'the set interior is missing'
           EOF
 
+      - name: Save and load round trip
+        run: |
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a python3 tests/save_roundtrip.py build/Imagina
+
+      - name: Render a high magnification view (Julia set renderer)
+        run: |
+          set -x
+          # 2e-18 is deep enough to enable the Julia set renderer
+          # (sqrt(HalfH) * 2**24 < 2**-4) but still uses a double precision
+          # reference: that is the EvaluationContext<double>::EvaluatePT()
+          # path the Windows GCC build used to crash in (#49).
+          printf 'Formula: Mandelbrot\nLocation:\n\tRe: -1.749204633460381\n\tIm: 0.0\n\tSize: 2e-18\n\tIterations: 2000\n' > /tmp/high-zoom.imt
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina             --open /tmp/high-zoom.imt --frames 400 --screenshot /tmp/high-zoom.bmp
+          ls -l /tmp/high-zoom.bmp
+          python3 - <<'EOF'
+          import struct
+          data = open('/tmp/high-zoom.bmp', 'rb').read()
+          offset = struct.unpack_from('<I', data, 10)[0]
+          width, height = struct.unpack_from('<ii', data, 18)
+          stride = ((width * 4) + 3) // 4 * 4
+          flipped = height > 0
+          rows = abs(height)
+
+          def pixel(x, y):
+              row = rows - 1 - y if flipped else y
+              i = offset + row * stride + x * 4
+              return data[i + 2], data[i + 1], data[i]
+
+          samples = [pixel(x, y) for y in range(40, rows - 2, 23) for x in range(2, width, 23)]
+          colours = len(set(samples))
+          print(f'{width}x{height}, {colours} distinct colours')
+          # A flat image means the reference orbit or the Julia set sampler
+          # produced nothing at this magnification.
+          assert colours > 100, 'the high magnification image looks flat'
+          EOF
+
       - name: Export a zoom sequence and read a key frame back
         run: |
           set -x
@@ -102,6 +139,11 @@ jobs:
 
       - name: Check the translations are complete
         run: python3 tools/check-translations.py
+
+      - name: Check the AppStream metadata and the Flatpak manifest
+        run: |
+          appstreamcli validate --no-net packaging/flatpak/io.github.marchbeta2087.Imagina.metainfo.xml
+          python3 -c "import yaml; yaml.safe_load(open('packaging/flatpak/io.github.marchbeta2087.Imagina.yml'))"
 
       - name: Render the UI in Chinese
         run: |
@@ -128,6 +170,19 @@ jobs:
           print(f'{width}x{height}, {colours} distinct colours')
           assert colours > 50, 'the Chinese UI did not render'
           EOF
+
+      # The release workflow packages with CPack: build the .deb here as well so
+      # a broken install layout or CPack rule fails on the pull request.
+      - name: Build the .deb
+        run: |
+          set -x
+          cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
+          cmake --build build --parallel
+          (cd build && cpack -G DEB)
+          ls -l build/*.deb
+          dpkg-deb --info build/*.deb
+          dpkg-deb --contents build/*.deb | grep -q ./usr/bin/Imagina
+          dpkg-deb --contents build/*.deb | grep -q ./usr/share/imagina/fonts/SarasaMonoSC-Regular.ttf
 
   windows-msvc:
     name: Windows (MSVC, vcpkg)
@@ -181,6 +236,56 @@ jobs:
         run: |
           ./build/windows-msvc/RawMapCodecTest.exe
           ./build/windows-msvc-sdl/RawMapCodecTest.exe
+
+      - name: Check the Win32 install layout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          cmake --install build/windows-msvc --prefix stage
+          foreach ($file in "Imagina.exe", "LICENSE.txt", "Readme.md") {
+            if (!(Test-Path "stage/$file")) { throw "missing $file" }
+          }
+          # vcpkg deploys the runtime DLLs next to the executable; the install
+          # rule has to pick them up from there.
+          foreach ($pattern in "gmp-*.dll", "gmpxx-*.dll", "libpng*.dll", "z*.dll") {
+            if (!(Get-ChildItem stage -Filter $pattern -ErrorAction SilentlyContinue)) {
+              throw "missing $pattern"
+            }
+          }
+          & stage/Imagina.exe --version | Select-String -SimpleMatch "Imagina"
+
+      # The MSI is built on pushes to dev/master (release.yml builds the one that
+      # is shipped), so pull requests do not download WiX on every run.
+      - name: Install WiX
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          # The windows image already ships WiX 3.14; only install it when it is
+          # missing (a pinned choco install fails when a newer 3.14.x is there).
+          $root = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'WiX Toolset v3*' -ErrorAction SilentlyContinue |
+                  Select-Object -First 1 -ExpandProperty FullName
+          if (!$root) {
+            $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
+            if ($candle) { $root = Split-Path -Parent (Split-Path -Parent $candle.Source) }
+          }
+          if (!$root) {
+            choco install wixtoolset -y --no-progress
+            $root = Get-ChildItem 'C:\Program Files (x86)' -Directory -Filter 'WiX Toolset v3*' |
+                    Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (!$root) { throw 'WiX 3 was not found' }
+          "IMAGINA_WIX_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "WiX: $root" 
+
+      - name: Build the MSI
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          cmake --preset windows-msvc -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DIMAGINA_WIX_VERSION=3 "-DCPACK_WIX_ROOT=$env:IMAGINA_WIX_ROOT"
+          Push-Location build/windows-msvc
+          try { cpack -G WIX } finally { Pop-Location }
+          Get-ChildItem build/windows-msvc/*.msi
 
       # The renderer is checked on Linux with software OpenGL: the hosted Windows
       # runners only provide the GDI OpenGL 1.1 implementation, which cannot

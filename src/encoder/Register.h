@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <cstddef>
 #include <concepts>
 
 enum class Register16 : uint8_t {

@@ -1,5 +1,8 @@
 #pragma once
 #include <stdint.h>
+#include <cstddef>
+#include <algorithm>
+#include <type_traits>
 //#include <concepts>
 
 #include "Register.h"
@@ -227,6 +230,13 @@ public:
 		RexW(0, 0).Byte(0xFF).RegMem(2, Mem);
 	}
 
+	// The C++ standard does not allow a function pointer to convert to void*
+	// implicitly; accept it through this overload instead.
+	template <typename Return, typename... Args>
+	void Call(Return (*Function)(Args...)) {
+		Call(reinterpret_cast<void *>(Function));
+	}
+
 	void Call(void *func) {
 		int64_t Disp = (uint8_t *)func - (Buffer + Pointer + 5);
 		if (Disp == int32_t(Disp)) {
@@ -290,15 +300,17 @@ public:
 
 	template <Register T> void Mov(T dst, T src) { Op(0x8B, dst, src); }
 
-	template <Register T> void Mov(T dst, ImmType<T> imm) { RexAndOpSize(0, dst).Byte(0xB8 | uint8_t(dst)).template Imm<T>(imm); }
-
-	template <> void Mov<Register64>(Register64 dst, int64_t imm) {
-		if (uint64_t(imm) == uint32_t(imm)) {
-			return Mov(Register32(dst), int32_t(imm));
-		} else if (imm == int32_t(imm)) {
-			return OpImm(0xC7, 0, dst, int32_t(imm));
+	template <Register T> void Mov(T dst, ImmType<T> imm) {
+		if constexpr (std::is_same_v<T, Register64>) {
+			if (uint64_t(imm) == uint32_t(imm)) {
+				return Mov(Register32(dst), int32_t(imm));
+			} else if (imm == int32_t(imm)) {
+				return OpImm(0xC7, 0, dst, int32_t(imm));
+			}
+			RexAndOpSize(0, dst).Byte(0xB8 | uint8_t(dst)).Imm64(imm);
+		} else {
+			RexAndOpSize(0, dst).Byte(0xB8 | uint8_t(dst)).template Imm<T>(imm);
 		}
-		RexAndOpSize(0, dst).Byte(0xB8 | uint8_t(dst)).Imm64(imm);
 	}
 
 	template <Register32Or64 AddrRegType> void Mov(const MemoryOperand<AddrRegType> &dst, Register auto src) { Op(0x89, dst, src); }

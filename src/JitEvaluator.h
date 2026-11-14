@@ -1,12 +1,6 @@
 #pragma once
 #ifdef ENABLE_CUSTOM_FORMULA
-#define and &&
-#define or ||
-#define not !
 #include <symengine/expression.h>
-#undef and
-#undef or
-#undef not
 #include <mpc.h>
 
 class JITEvaluator : public SimpleEvaluator {

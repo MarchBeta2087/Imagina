@@ -1,29 +1,24 @@
 #include "Includes.h"
 
 #ifdef ENABLE_CUSTOM_FORMULA
+#include <stdexcept>
+#include <string>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <ranges>
 #include <stack>
 
-#define and &&
-#define or ||
-#define not !
 #include <symengine/basic.h>
 #include <symengine/visitor.h>
 #include <symengine/solve.h>
 #include <symengine/eval_mpc.h>
-#undef and
-#undef or
-#undef not
 
 #include "encoder/Encoder.h"
 #include "encoder/XMMComplex.h"
 
-class FormulaCompileError : public std::exception {
+class FormulaCompileError : public std::runtime_error {
 public:
-	explicit FormulaCompileError(const std::string &Message) : std::exception(Message.c_str()) {}
-	explicit FormulaCompileError(const char *Message) : std::exception(Message) {}
+	using std::runtime_error::runtime_error;
 };
 
 struct Operation {
