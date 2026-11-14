@@ -238,9 +238,13 @@ size_t HInfLAEvaluator::SaveReference(std::ostream &stream, const Reference *ref
 	ReferenceHeader Header;
 
 	// The orbit elements are complex<HRReal> unless the reference was loaded from
-	// a file that stored them as complex<double>; the stage precision says nothing
-	// about that, so the flag set by LoadReference() decides.
-	Header.ExtendedRange = !Ref.OrbitIsDouble;
+	// a file that stored them as complex<double>; the flag set by LoadReference()
+	// decides that.  A reference generated in double precision can still need HR
+	// values for the uncorrectable parts of the orbit, which are recovered from the
+	// first LA stage that is not double.  When every stage is double there is no HR
+	// data to recover, so the double orbit is stored instead.
+	bool HasHRLAStage = Ref.LAStageCount && !Ref.LAStages[Ref.LAStageCount - 1].UseDoublePrecision;
+	Header.ExtendedRange = !Ref.OrbitIsDouble && (!Ref.DoublePrecisionPT || HasHRLAStage);
 
 	stream.write((const char *)&Header, sizeof(ReferenceHeader));
 	stream.write((const char *)static_cast<const ReferenceTrivialContent *>(&Ref), sizeof(ReferenceTrivialContent));
