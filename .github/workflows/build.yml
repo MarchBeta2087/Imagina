@@ -165,6 +165,19 @@ jobs:
           assert colours > 50, 'the Chinese UI did not render'
           EOF
 
+      # The release workflow packages with CPack: build the .deb here as well so
+      # a broken install layout or CPack rule fails on the pull request.
+      - name: Build the .deb
+        run: |
+          set -x
+          cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
+          cmake --build build --parallel
+          (cd build && cpack -G DEB)
+          ls -l build/*.deb
+          dpkg-deb --info build/*.deb
+          dpkg-deb --contents build/*.deb | grep -q ./usr/bin/Imagina
+          dpkg-deb --contents build/*.deb | grep -q ./usr/share/imagina/fonts/SarasaMonoSC-Regular.ttf
+
   windows-msvc:
     name: Windows (MSVC, vcpkg)
     runs-on: windows-latest
