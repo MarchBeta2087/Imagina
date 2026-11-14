@@ -120,7 +120,12 @@ void FileDialogCallback(void *UserData, const char *const *FileList, int Filter)
 }
 
 // Filters are the Win32 style "Description(*.ext)|*.ext|..." pairs.
-bool ShowFileDialog(bool Save, const char *Filters, std::string &Path, int &FilterIndex) {
+struct FilterPair {
+	std::string Description;
+	std::string Patterns;
+};
+
+std::vector<FilterPair> ParseFilters(const char *Filters) {
 	std::vector<std::string> Parts;
 	std::string Current;
 	for (const char *Character = Filters;; Character++) {
@@ -133,10 +138,107 @@ bool ShowFileDialog(bool Save, const char *Filters, std::string &Path, int &Filt
 		}
 	}
 
-	std::vector<SDL_DialogFileFilter> SdlFilters;
-	SdlFilters.reserve(Parts.size() / 2);
+	std::vector<FilterPair> Pairs;
 	for (size_t i = 0; i + 1 < Parts.size(); i += 2) {
-		SdlFilters.push_back({ Parts[i].c_str(), Parts[i + 1].c_str() });
+		Pairs.push_back({ Parts[i], Parts[i + 1] });
+	}
+	return Pairs;
+}
+
+int GuessFilterIndex(const std::vector<FilterPair> &Filters, const std::string &Path) {
+	std::string Extension = std::filesystem::path(Path).extension().string();
+	for (char &Character : Extension) Character = char(std::tolower((unsigned char)Character));
+	if (Extension.empty()) return 1;
+
+	for (size_t i = 0; i < Filters.size(); i++) {
+		std::string Patterns = Filters[i].Patterns;
+		size_t Start = 0;
+		while (Start <= Patterns.size()) {
+			size_t End = Patterns.find(';', Start);
+			if (End == std::string::npos) End = Patterns.size();
+			std::string Pattern = Patterns.substr(Start, End - Start);
+			for (char &Character : Pattern) Character = char(std::tolower((unsigned char)Character));
+			if (Pattern.size() > 1 && Pattern[0] == '*' && Pattern[1] == '.') {
+				Pattern.erase(0, 1);
+				if (Pattern == Extension || Pattern == ".*") return int(i + 1);
+			}
+			Start = End + 1;
+		}
+	}
+	return 1;
+}
+
+#if defined(__linux__)
+std::string ShellQuote(const std::string &Value) {
+	std::string Quoted = "'";
+	for (char Character : Value) {
+		if (Character == '\'') Quoted += "'\\''";
+		else Quoted.push_back(Character);
+	}
+	Quoted.push_back('\'');
+	return Quoted;
+}
+
+bool CommandExists(const char *Name) {
+	std::string Command = "command -v " + std::string(Name) + " >/dev/null 2>&1";
+	return std::system(Command.c_str()) == 0;
+}
+
+enum class NativeDialogResult { Unavailable, Cancelled, Selected };
+
+// SDL3 uses the XDG desktop portal on Linux.  The portal process often does not
+// inherit DISPLAY (WSLg, minimal desktops), so the request silently never comes
+// back.  zenity is a small GTK dialog that inherits the environment and is
+// present on most desktops, so prefer it when it is installed.
+NativeDialogResult ZenityFileDialog(bool Save, const char *Title, const std::vector<FilterPair> &Filters,
+	std::string &Path, int &FilterIndex) {
+	if (!CommandExists("zenity")) return NativeDialogResult::Unavailable;
+
+	std::string Command = "zenity --file-selection";
+	if (Save) Command += " --save --confirm-overwrite";
+	if (Title && *Title) Command += " --title=" + ShellQuote(Title);
+	if (!Path.empty()) Command += " --filename=" + ShellQuote(Path);
+	for (const FilterPair &Filter : Filters) {
+		std::string Patterns = Filter.Patterns;
+		for (char &Character : Patterns) {
+			if (Character == ';') Character = ' ';
+		}
+		if (Patterns == "*.*") Patterns = "*";
+		Command += " --file-filter=" + ShellQuote(Filter.Description + " | " + Patterns);
+	}
+	Command += " 2>/dev/null";
+
+	FILE *Pipe = popen(Command.c_str(), "r");
+	if (!Pipe) return NativeDialogResult::Unavailable;
+
+	std::string Output;
+	char Buffer[4096];
+	while (fgets(Buffer, sizeof(Buffer), Pipe)) Output += Buffer;
+	int Status = pclose(Pipe);
+	while (!Output.empty() && (Output.back() == '\n' || Output.back() == '\r')) Output.pop_back();
+
+	if (Status != 0 || Output.empty()) return NativeDialogResult::Cancelled;
+	Path = Output;
+	FilterIndex = GuessFilterIndex(Filters, Path);
+	return NativeDialogResult::Selected;
+}
+#endif
+
+bool ShowFileDialog(bool Save, const char *Title, const char *Filters, std::string &Path, int &FilterIndex) {
+	const std::vector<FilterPair> Pairs = ParseFilters(Filters);
+
+#if defined(__linux__)
+	switch (ZenityFileDialog(Save, Title, Pairs, Path, FilterIndex)) {
+		case NativeDialogResult::Selected: return true;
+		case NativeDialogResult::Cancelled: return false;
+		case NativeDialogResult::Unavailable: break;
+	}
+#endif
+
+	std::vector<SDL_DialogFileFilter> SdlFilters;
+	SdlFilters.reserve(Pairs.size());
+	for (const FilterPair &Filter : Pairs) {
+		SdlFilters.push_back({ Filter.Description.c_str(), Filter.Patterns.c_str() });
 	}
 
 	FileDialogResult Result;
@@ -154,7 +256,7 @@ bool ShowFileDialog(bool Save, const char *Filters, std::string &Path, int &Filt
 
 	if (Result.Path.empty()) return false;
 	Path = Result.Path;
-	FilterIndex = Result.Filter >= 0 ? Result.Filter + 1 : 1;
+	FilterIndex = Result.Filter >= 0 ? Result.Filter + 1 : GuessFilterIndex(Pairs, Path);
 	return true;
 }
 
@@ -355,13 +457,11 @@ void OpenTransformationDialog() {
 } // namespace
 
 bool PlatformOpenFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex) {
-	(void)Title; // SDL uses the platform's default dialog title
-	return ShowFileDialog(false, Filters, Path, FilterIndex);
+	return ShowFileDialog(false, Title, Filters, Path, FilterIndex);
 }
 
 bool PlatformSaveFileDialog(const char *Title, const char *Filters, std::string &Path, int &FilterIndex) {
-	(void)Title;
-	return ShowFileDialog(true, Filters, Path, FilterIndex);
+	return ShowFileDialog(true, Title, Filters, Path, FilterIndex);
 }
 
 void SetFractalType(FractalTypeEnum Type) {
@@ -1199,7 +1299,12 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, PixelWidth, PixelHeight);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		if (SavePath && FContext.pixelManager.Completed()) {
+		// A high magnification view needs a reference before the pixels can be
+		// evaluated; the pixel manager can report "completed" for one frame
+		// before the reference task has produced anything, and saving then wrote
+		// a file without a reference section.
+		if (SavePath && FContext.pixelManager.Completed() && !FContext.ReferenceTask &&
+			(!FContext.NeedReference || FContext.reference)) {
 			// The extension decides what to write, which also makes the file
 			// formats testable without a dialog.
 			std::filesystem::path Output(SavePath);
