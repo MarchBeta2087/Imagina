@@ -263,12 +263,18 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
 
 版本号只有一处来源：`CMakeLists.txt` 里的 `project(... VERSION ...)`；`--version`、
 「关于」对话框和 Windows 版本资源都由它生成（`vcpkg.json` 里为 manifest 重复了一次）。
-目前是 `1.0.0`。发布使用 `vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在
+发布使用 `vMAJOR.MINOR.PATCH` 形式的标签，每次发布的内容记录在
 [CHANGELOG.md](CHANGELOG.md)。
+
+打标签之前，先更新 `CMakeLists.txt` 和 `vcpkg.json` 里的版本号，并把 CHANGELOG 中
+`[Unreleased]` 下的条目移入新的 `## [x.y.z] - YYYY-MM-DD` 小节。推送 `vX.Y.Z`
+标签会触发 `release` 工作流：构建 Linux 与 Windows 压缩包、生成 `SHA256SUMS`，
+连同自动生成的发布说明一起附到 **草稿** 形式的 GitHub Release 上。标签与两处版本号
+不一致时工作流会失败。
 
 ```
 $ ./build/Imagina --version
-Imagina 1.0.0 (SDL front-end)
+Imagina x.y.z (SDL front-end)
 ```
 
 ## 许可证
