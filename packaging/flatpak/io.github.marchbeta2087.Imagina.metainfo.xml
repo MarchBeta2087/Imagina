@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.imagina.Imagina</id>
+  <id>io.github.marchbeta2087.Imagina</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-or-later</project_license>
   <name>Imagina</name>
@@ -13,14 +13,26 @@
       This is a maintained fork of the original Imagina, with a Linux front-end and packaging for the common desktop formats.
     </p>
   </description>
-  <launchable type="desktop-id">org.imagina.Imagina.desktop</launchable>
+  <launchable type="desktop-id">io.github.marchbeta2087.Imagina.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.4/docs/flathub/imagina-default.png</image>
+      <caption>The Mandelbrot set at the starting view</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://github.com/MarchBeta2087/Imagina/raw/v1.0.4/docs/flathub/imagina-deep-zoom.png</image>
+      <caption>A deep zoom in the Mandelbrot set</caption>
+    </screenshot>
+  </screenshots>
   <url type="homepage">https://github.com/MarchBeta2087/Imagina</url>
+  <url type="vcs-browser">https://github.com/MarchBeta2087/Imagina</url>
   <url type="bugtracker">https://github.com/MarchBeta2087/Imagina/issues</url>
   <developer id="io.github.marchbeta2087">
     <name>MarchBeta2087</name>
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.4" date="2026-11-15"/>
     <release version="1.0.3" date="2026-11-13"/>
   </releases>
 </component>

@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.16)
 
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource (see the Readme, "Versioning").
-project ("Imagina" VERSION 1.0.3 LANGUAGES C CXX)
+project ("Imagina" VERSION 1.0.4 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 if(ENABLE_CUSTOM_FORMULA AND NOT WIN32)

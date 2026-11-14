@@ -10,6 +10,8 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-15
+
 ### Added / 新增
 
 - Debian/Ubuntu package: `cmake --preset linux-deb` + `cpack -G DEB` builds an
@@ -24,10 +26,10 @@ Imagina 的所有重要变更都记录在这里。格式沿用
   the release workflow attaches the MSI next to the zip.
   Windows MSI：用 WiX 生成（`cpack -G WIX`）；Win32 前端新增了 exe、vcpkg
   运行时 DLL 和文档的 `install()` 规则，release 工作流会把 MSI 和 zip 一起附上。
-- Flatpak manifest (`packaging/flatpak/org.imagina.Imagina.yml`): builds SDL3,
+- Flatpak manifest (`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`): builds SDL3,
   Dear ImGui, GLM, GMP and the CJK font from source and installs the SDL
   front-end, desktop file, AppStream metadata and icons under `/app`.
-  Flatpak manifest（`packaging/flatpak/org.imagina.Imagina.yml`）：从源码构建
+  Flatpak manifest（`packaging/flatpak/io.github.marchbeta2087.Imagina.yml`）：从源码构建
   SDL3、Dear ImGui、GLM、GMP 和字体，把 SDL 前端、desktop 文件、AppStream 元数据
   和图标安装到 `/app`。
 
@@ -300,7 +302,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.4...dev
+[1.0.4]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1
