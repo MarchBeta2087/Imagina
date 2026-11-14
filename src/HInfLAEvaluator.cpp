@@ -228,6 +228,13 @@ size_t HInfLAEvaluator::SaveReference(std::ostream &stream, const Reference *ref
 	const LAReference<> &Ref = *static_cast<const LAReference<>*>(reference);
 	const LAReference<double> &DPRef = *static_cast<const LAReference<double>*>(reference);
 
+	// A direct-evaluate reference (a shallow view, or an orbit shorter than
+	// eight iterations) has no orbit array: GenerateReference() clears it.
+	// Writing it used to read Orbit[0] out of reserved but uncommitted memory
+	// and crash.  The caller stores ReferenceOffset = 0 when this returns 0,
+	// so the reference is regenerated when the file is opened again.
+	if (Ref.DirectEvaluate || Ref.RefIt == 0 || Ref.Ref.size() == 0) return 0;
+
 	ReferenceHeader Header;
 
 	// The orbit elements are complex<HRReal> unless the reference was loaded from

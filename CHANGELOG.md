@@ -12,6 +12,12 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- Saving a location that does not need a reference orbit (the starting view,
+  or an orbit shorter than eight iterations) read an empty orbit array and
+  crashed.  These locations are now written without a reference section and
+  regenerate it when they are opened.
+  保存不需要参考轨道的位置（初始视图，或轨道短于 8 次迭代）时会读取空的轨道
+  数组并崩溃；现在这类位置不写入参考轨道，打开时会自动重新生成。
 - The transformation dialog wrote one byte past a 32 byte stack buffer
   (`buffer[32] = 0`) and corrupted the return address, so pressing OK crashed.
   Flip imaginary axis only made the bad frame more likely to be hit.
