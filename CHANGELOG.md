@@ -10,6 +10,17 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+### Fixed / 修复
+
+- The transformation dialog wrote one byte past a 32 byte stack buffer
+  (`buffer[32] = 0`) and corrupted the return address, so pressing OK crashed.
+  Flip imaginary axis only made the bad frame more likely to be hit.
+  变换对话框在 32 字节栈缓冲区的末尾越界写入（`buffer[32] = 0`），破坏返回地址，
+  按下「确定」即崩溃；勾选「Flip imaginary axis」只是让问题更容易触发。
+- The iteration limit and image size dialogs passed no size argument for `%c` to
+  `sscanf_s`, which MSVC reports as C4473.
+  迭代上限与图像尺寸对话框的 `sscanf_s` 没有给 `%c` 传长度参数，MSVC 会报 C4473。
+
 ## [1.0.3] - 2026-11-13
 
 ### Fixed / 修复
