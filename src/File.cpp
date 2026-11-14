@@ -455,9 +455,16 @@ void SaveImtFile(std::ostream &File) {
 
 void SaveFile(const std::filesystem::path &FileName, FileType Type) {
 	using enum FileType;
+
+	// Write next to the target and rename into place only when the whole file has
+	// been written.  Opening the target directly truncated it before any data
+	// was written, so a crash or a full disk destroyed the previous save.
+	std::filesystem::path TempName = FileName;
+	TempName += ".tmp";
+
 	std::ofstream File;
 	bool Binary = Type == Imagina;
-	File.open(FileName, std::ofstream::out | (Binary ? std::ofstream::binary : std::ofstream::openmode(0)));
+	File.open(TempName, std::ofstream::out | (Binary ? std::ofstream::binary : std::ofstream::openmode(0)));
 	if (!File) {
 		ErrorMessage("Cannot write file", FileName.string().c_str());
 		return;
@@ -471,6 +478,18 @@ void SaveFile(const std::filesystem::path &FileName, FileType Type) {
 	}
 
 	File.close();
+	std::error_code Error;
+	if (!File) {
+		std::filesystem::remove(TempName, Error);
+		ErrorMessage("Cannot write file", FileName.string().c_str());
+		return;
+	}
+
+	std::filesystem::rename(TempName, FileName, Error);
+	if (Error) {
+		std::filesystem::remove(TempName, Error);
+		ErrorMessage("Cannot write file", FileName.string().c_str());
+	}
 }
 
 static void WritePngData(png_structp Png, png_bytep Data, png_size_t Length) {
