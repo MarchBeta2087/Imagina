@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.16)
 
 # The version of the program; it appears in --version, the About dialog and the
 # Windows version resource (see the Readme, "Versioning").
-project ("Imagina" VERSION 1.0.4 LANGUAGES C CXX)
+project ("Imagina" VERSION 1.0.5 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
 if(ENABLE_CUSTOM_FORMULA AND NOT WIN32)
@@ -75,8 +75,15 @@ endif()
 # VCPKG_INSTALLED_DIR (switching the compiler invalidates the CMake cache, and
 # the toolchain does not always run again on the re-configure).
 file(GLOB _imagina_local_vcpkg_includes
-	"${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/*/include"
 	"${CMAKE_BINARY_DIR}/vcpkg_installed/*/include")
+# A vcpkg tree next to the sources is a Windows one in practice, and its
+# x64-windows headers break a Linux build of the same checkout (a shared
+# repository on a dual-boot or /mnt/c setup); only use it on Windows.
+if(WIN32)
+	file(GLOB _imagina_source_vcpkg_includes
+		"${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/*/include")
+	list(APPEND _imagina_local_vcpkg_includes ${_imagina_source_vcpkg_includes})
+endif()
 foreach(_imagina_local_vcpkg_include ${_imagina_local_vcpkg_includes})
 	get_filename_component(_imagina_local_vcpkg_root "${_imagina_local_vcpkg_include}" DIRECTORY)
 	list(APPEND INCLUDE_PATH "${_imagina_local_vcpkg_include}")
@@ -591,13 +598,13 @@ if(UNIX AND NOT APPLE AND IMAGINA_FRONTEND STREQUAL "sdl")
 	set(CPACK_DEBIAN_PACKAGE_NAME "imagina")
 	set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
 	set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-	# SDL3 loads the GL, X11 and Wayland libraries at runtime, so dpkg-shlibdeps
-	# does not see them in the binary's NEEDED entries; the directly linked ones
-	# are listed explicitly to keep the package installable without them.
-	set(CPACK_DEBIAN_PACKAGE_DEPENDS
-		"libc6, libgcc-s1, libstdc++6, libgmp10, libpng16-16, zlib1g, libglvnd0, libopengl0, libx11-6")
+	# Let dpkg-shlibdeps derive the dependency names from the distribution the
+	# package is built on (libpng16-16 vs libpng16-16t64, ...).  SDL3 loads GL,
+	# X11 and Wayland at runtime, so those never appear in NEEDED and are
+	# recommendations instead of hard dependencies.
+	set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 	set(CPACK_DEBIAN_PACKAGE_RECOMMENDS
-		"libgl1, libgl1-mesa-dri, libwayland-client0, libdecor-0-0, zenity")
+		"libgl1, libgl1-mesa-dri, libwayland-client0, libdecor-0-0, libx11-6, zenity")
 	include(CPack)
 endif()
 

@@ -216,19 +216,22 @@ cmake --build --preset linux-deb
 安装后程序位于 `/usr/bin/Imagina`，字体、许可证和文档位于 `/usr/share/imagina`
 与 `/usr/share/doc/imagina`，并附带 desktop 文件和图标。
 
-Flatpak 用 `packaging/flatpak/` 里的 manifest 从同一份源码构建：
+`.deb` 的依赖在构建时由 `dpkg-shlibdeps` 推导，因此与构建所用的发行版匹配。
+发布版同时提供 Ubuntu 26.04（glibc 2.43）和 Ubuntu 22.04（glibc 2.34）构建的
+包，文件名会标明所需的 glibc 版本；22.04 构建可在 22.04+ 与 Debian 12+ 上运行。
+
+AppImage 用 system 布局的构建目录生成：
 
 ```
-flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user -y flathub org.flatpak.Builder
-flatpak run --command=flatpak-builder org.flatpak.Builder \
-    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
-    packaging/flatpak/io.github.marchbeta2087.Imagina.yml
-flatpak run io.github.marchbeta2087.Imagina
+cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release \
+    -DIMAGINA_FRONTEND=sdl -DIMAGINA_INSTALL_LAYOUT=system
+cmake --build build-appimage
+packaging/appimage/build-appimage.sh build-appimage Imagina-x86_64.AppImage
 ```
 
-manifest 会从上游源码构建 SDL3、Dear ImGui、GLM、GMP 和字体，并使用同一套
-system 布局（前缀为 `/app`）。
+脚本会打包 GMP、libpng、zlib、libstdc++ 和字体，并在首次运行时下载
+appimagetool。请在希望支持的最旧发行版上构建；发布用 AppImage 在 Ubuntu 22.04
+（glibc 2.34）上构建。
 
 Linux 上 SDL 前端在安装了 `zenity` 时用它显示打开/保存对话框（WSL 下推荐），
 否则使用 SDL 的 XDG desktop portal。若 portal 服务启动时没有 `DISPLAY`，对话框

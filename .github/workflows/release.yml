@@ -82,9 +82,12 @@ jobs:
           cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
           cmake --build build --parallel
           (cd build && cpack -G DEB)
-          cp build/*.deb dist/
+          glibc=$(objdump -T build/Imagina | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -n 1 | sed 's/^GLIBC_//')
+          mv build/*.deb "dist/imagina-${version}-amd64-glibc${glibc}.deb"
           dpkg-deb --info dist/*.deb
-          dpkg-deb --contents dist/*.deb | head -40
+          dpkg-deb --contents dist/*.deb > /tmp/deb-contents.txt
+          head -40 /tmp/deb-contents.txt
+          apt-get -s install ./dist/*.deb
 
       - uses: actions/upload-artifact@v4
         with:
@@ -92,6 +95,68 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.deb
+          if-no-files-found: error
+
+  # The AppImage and the low-glibc .deb are built on the oldest distribution
+  # the project supports.  Ubuntu 22.04 has glibc 2.35; the produced binary
+  # currently needs 2.34, so AppImages and packages built there run on 22.04+
+  # and Debian 12+.
+  linux-old:
+    name: Linux x86_64 (Ubuntu 22.04, glibc 2.34)
+    runs-on: ubuntu-22.04
+    needs: check-version
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends             build-essential cmake ninja-build pkg-config g++             libgmp-dev libpng-dev zlib1g-dev             libgl1-mesa-dev libgl1-mesa-dri             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev             libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev             libxkbcommon-x11-dev libwayland-dev libdecor-0-dev             curl file
+
+      - name: Fetch the CJK font
+        run: bash tools/fetch-fonts.sh
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja             -DCMAKE_BUILD_TYPE=Release             -DIMAGINA_FRONTEND=sdl             -DBUILD_GUI=ON             -DBUILD_CODEC_TEST=ON             -DIMAGINA_INSTALL_LAYOUT=system
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Codec test
+        run: ./build/RawMapCodecTest
+
+      - name: Build the .deb
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          (cd build && cpack -G DEB)
+          glibc=$(objdump -T build/Imagina | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -n 1 | sed 's/^GLIBC_//')
+          mkdir -p dist
+          mv build/*.deb "dist/imagina-${version}-amd64-glibc${glibc}.deb"
+          dpkg-deb --info dist/*.deb
+          apt-get -s install ./dist/*.deb
+
+      - name: Build the AppImage
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          packaging/appimage/build-appimage.sh build "dist/Imagina-$version-x86_64.AppImage"
+          ls -l dist/Imagina-*.AppImage
+
+      - name: Smoke test the AppImage
+        run: |
+          set -eux
+          version="${GITHUB_REF_NAME#v}"
+          "dist/Imagina-$version-x86_64.AppImage" --appimage-extract-and-run --version | grep -qx "Imagina $version (SDL front-end)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-old
+          path: |
+            dist/*.deb
+            dist/*.AppImage
           if-no-files-found: error
 
   windows:
@@ -203,7 +268,7 @@ jobs:
   publish:
     name: Draft the GitHub release
     runs-on: ubuntu-latest
-    needs: [linux, windows]
+    needs: [linux, linux-old, windows]
     steps:
       - uses: actions/download-artifact@v4
         with:
