@@ -84,6 +84,38 @@ jobs:
         run: |
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a python3 tests/save_roundtrip.py build/Imagina
 
+      - name: Render a high magnification view (Julia set renderer)
+        run: |
+          set -x
+          # 2e-18 is deep enough to enable the Julia set renderer
+          # (sqrt(HalfH) * 2**24 < 2**-4) but still uses a double precision
+          # reference: that is the EvaluationContext<double>::EvaluatePT()
+          # path the Windows GCC build used to crash in (#49).
+          printf 'Formula: Mandelbrot\nLocation:\n\tRe: -1.749204633460381\n\tIm: 0.0\n\tSize: 2e-18\n\tIterations: 2000\n' > /tmp/high-zoom.imt
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./build/Imagina             --open /tmp/high-zoom.imt --frames 400 --screenshot /tmp/high-zoom.bmp
+          ls -l /tmp/high-zoom.bmp
+          python3 - <<'EOF'
+          import struct
+          data = open('/tmp/high-zoom.bmp', 'rb').read()
+          offset = struct.unpack_from('<I', data, 10)[0]
+          width, height = struct.unpack_from('<ii', data, 18)
+          stride = ((width * 4) + 3) // 4 * 4
+          flipped = height > 0
+          rows = abs(height)
+
+          def pixel(x, y):
+              row = rows - 1 - y if flipped else y
+              i = offset + row * stride + x * 4
+              return data[i + 2], data[i + 1], data[i]
+
+          samples = [pixel(x, y) for y in range(40, rows - 2, 23) for x in range(2, width, 23)]
+          colours = len(set(samples))
+          print(f'{width}x{height}, {colours} distinct colours')
+          # A flat image means the reference orbit or the Julia set sampler
+          # produced nothing at this magnification.
+          assert colours > 100, 'the high magnification image looks flat'
+          EOF
+
       - name: Export a zoom sequence and read a key frame back
         run: |
           set -x
