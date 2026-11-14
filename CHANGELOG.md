@@ -10,6 +10,8 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-15
+
 ### Added / 新增
 
 - Debian/Ubuntu package: `cmake --preset linux-deb` + `cpack -G DEB` builds an
@@ -300,7 +302,8 @@ First pre-release: the portable front-end and the tooling around it.
   由于 fork 无法通过 Git LFS 保存字体，发布的 CJK 字体改为从 Release 资源
   （`deps-fonts-v1`）下载。
 
-[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...dev
+[Unreleased]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.4...dev
+[1.0.4]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MarchBeta2087/Imagina/compare/v1.0.0...v1.0.1
