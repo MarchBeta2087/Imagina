@@ -205,6 +205,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dea
 （`build/msvc`、`build/gcc`、`build/clang` 等），切换编译器不会复用旧的 CMake
 缓存。不指定编译器时仍使用 `build`；`-BuildDir`/`--build-dir` 可覆盖这两种默认值。
 
+Linux 上 SDL 前端在安装了 `zenity` 时用它显示打开/保存对话框（WSL 下推荐），
+否则使用 SDL 的 XDG desktop portal。若 portal 服务启动时没有 `DISPLAY`，对话框
+不会出现；此时请安装 `zenity`，或把 `DISPLAY` 导入用户会话。
+
 自定义公式（`-DENABLE_CUSTOM_FORMULA=ON`）仅支持 Windows：JIT 生成的是 Windows
 x64 机器码。该构建还需要启用 MPC 支持的 SymEngine、mpfr 和 mpc。
 
