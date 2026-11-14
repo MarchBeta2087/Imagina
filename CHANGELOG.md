@@ -12,6 +12,20 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- The Windows GCC build no longer crashes when zooming in far enough to
+  render the Julia set: GCC on Windows only guarantees a 16-byte stack
+  alignment, but it placed 32-byte aligned temporaries (the by-value
+  `std::complex<dvec4>` arguments of the evaluator) on 16-byte boundaries and
+  then accessed them with `vmovapd %ymm`, which faults with #GP.  The vector
+  storage types now carry a 16-byte alignment under GCC on Windows, so those
+  moves are unaligned, while the computation still uses full ymm registers.
+  MSVC, Clang and the Linux/BSD GCC builds keep the native intrinsic types.
+  Windows 上的 GCC 构建在放大到需要渲染 Julia 集的倍数时不再崩溃：Windows 上的
+  GCC 只保证 16 字节栈对齐，却把需要 32 字节对齐的临时对象（求值器中按值传递的
+  `std::complex<dvec4>` 参数）放在 16 字节边界上，再用 `vmovapd %ymm` 访问，
+  触发 #GP。现在 Windows 下 GCC 的向量存储类型改为 16 字节对齐，这类访问会改用
+  非对齐指令，计算本身仍然使用完整的 ymm 寄存器；MSVC、Clang 以及 Linux/BSD 上
+  的 GCC 构建保持原生 intrinsic 类型不变。
 - `.im` files are portable between Windows and Linux again: the embedded
   floating point exponent is stored in a fixed 32-bit field instead of `long`,
   which is 4 bytes on Windows and 8 bytes on Linux.  Loading a save from the
