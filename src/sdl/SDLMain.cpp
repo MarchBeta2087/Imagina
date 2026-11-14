@@ -801,9 +801,9 @@ void DrawDialogs() {
 			ImGui::TextUnformatted(Tr("Imagina - fast fractal renderer & explorer"));
 			ImGui::TextUnformatted("Modified version (2026): zoom sequence export with lossless raw map files.");
 			ImGui::Separator();
-			ImGui::TextUnformatted("Source of the original program:  https://github.com/5E-324/Imagina");
-			ImGui::TextUnformatted("Source of this version:          https://github.com/haveyouwantto/Imagina");
-			ImGui::TextUnformatted("This fork (SDL3 front-end, zoom export): https://github.com/MarchBeta2087/Imagina");
+			ImGui::TextUnformatted("Maintained fork:  https://github.com/MarchBeta2087/Imagina");
+			ImGui::TextUnformatted("Original program: https://github.com/5E-324/Imagina");
+			ImGui::TextUnformatted("Based on:         https://github.com/haveyouwantto/Imagina");
 			ImGui::Separator();
 			ImGui::TextUnformatted(Tr("This build uses the SDL3 + Dear ImGui front-end."));
 			ImGui::Spacing();

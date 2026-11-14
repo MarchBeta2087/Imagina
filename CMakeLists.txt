@@ -5,6 +5,11 @@ cmake_minimum_required (VERSION 3.16)
 project ("Imagina" VERSION 1.0.3 LANGUAGES C CXX)
 
 option(ENABLE_CUSTOM_FORMULA "Enable custom formula" OFF)
+if(ENABLE_CUSTOM_FORMULA AND NOT WIN32)
+	message(FATAL_ERROR
+		"ENABLE_CUSTOM_FORMULA is only supported on Windows: the custom formula "
+		"JIT emits Windows x64 machine code.  Configure without it.")
+endif()
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
 option(BUILD_CODEC_TEST "Build the raw map codec round trip test" OFF)
 
@@ -56,6 +61,20 @@ endif()
 # vcpkg only puts its include directory on the search path through imported
 # targets, and this project also includes bare headers (GL/glext.h, glm/...), so
 # add the installed tree explicitly when the toolchain tells us where it is.
+# A vcpkg tree next to the sources is used even when the toolchain did not set
+# VCPKG_INSTALLED_DIR (switching the compiler invalidates the CMake cache, and
+# the toolchain does not always run again on the re-configure).
+file(GLOB _imagina_local_vcpkg_includes
+	"${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/*/include"
+	"${CMAKE_BINARY_DIR}/vcpkg_installed/*/include")
+foreach(_imagina_local_vcpkg_include ${_imagina_local_vcpkg_includes})
+	get_filename_component(_imagina_local_vcpkg_root "${_imagina_local_vcpkg_include}" DIRECTORY)
+	list(APPEND INCLUDE_PATH "${_imagina_local_vcpkg_include}")
+	if(EXISTS "${_imagina_local_vcpkg_root}/lib")
+		list(APPEND LIBRARY_PATH "${_imagina_local_vcpkg_root}/lib")
+	endif()
+endforeach()
+
 if(VCPKG_INSTALLED_DIR)
 	set(_imagina_vcpkg_triplet "${VCPKG_TARGET_TRIPLET}")
 	if(NOT _imagina_vcpkg_triplet)
@@ -148,6 +167,8 @@ if(WIN32 AND BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 endif()
 find_package(ZLIB QUIET)
 find_package(PNG QUIET)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 # FindZLIB and FindPNG use ZLIB_LIBRARY/PNG_LIBRARY as their own cache variables,
 # so the fallback names are not written there: a value that is neither a target nor
 # a file on disk kept the package search from ever succeeding again (installing
@@ -329,6 +350,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	target_link_libraries(Imagina "dbghelp")
 	target_link_libraries(Imagina "shell32")
 	target_link_libraries(Imagina "ole32")
+	target_link_libraries(Imagina Threads::Threads)
 	target_link_libraries(Imagina ${MPIR_LIBRARY})
 
 	if(MPIR_USE_DLL)
@@ -441,7 +463,7 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 		target_link_directories(Imagina PRIVATE "${LIBRARY_PATH}/Release")
 	endif()
 
-	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
+	target_link_libraries(Imagina PRIVATE ${ImaginaImGuiTarget} SDL3::SDL3 Threads::Threads ${MPIR_LIBRARY} ${PNG_LIBRARY} ${ZLIB_LIBRARY})
 	if(NOT MPIR_USE_DLL)
 		target_link_libraries(Imagina PRIVATE ${MPIRXX_LIBRARY})
 	elseif(WIN32)

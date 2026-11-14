@@ -211,8 +211,12 @@ job does.
 ```
 ./build.sh --compiler clang --test
 ./build.sh --frontend sdl --compiler clang
-./build.sh --clean -- -DENABLE_CUSTOM_FORMULA=ON
+./build.sh --clean
 ```
+
+Custom formulas (`-DENABLE_CUSTOM_FORMULA=ON`) are Windows-only: the JIT
+emits Windows x64 machine code.  That build also needs SymEngine with MPC
+support, mpfr and mpc.
 
 ## Front-ends
 

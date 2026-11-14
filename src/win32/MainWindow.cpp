@@ -343,19 +343,15 @@ void SaveImage(bool raw = false) {
 static const wchar_t AboutNotice[] =
 	L"Copyright (C) 2023 Zhuoran and contributors (see the source repository).\r\n"
 	L"\r\n"
-	L"This program is free software: you can redistribute it and/or modify it under the\r\n"
-	L"terms of the GNU Affero General Public License as published by the Free Software\r\n"
-	L"Foundation, either version 3 of the License, or (at your option) any later version.\r\n"
-	L"It is distributed in the hope that it will be useful, but without any warranty;\r\n"
-	L"without even the implied warranty of merchantability or fitness for a particular\r\n"
-	L"purpose.  The full licence text is shown below.\r\n"
+	L"Maintained fork:  https://github.com/MarchBeta2087/Imagina\r\n"
+	L"Original program: https://github.com/5E-324/Imagina\r\n"
+	L"Based on:         https://github.com/haveyouwantto/Imagina\r\n"
+	L"\r\n"
+	L"This program is free software under the GNU AGPL v3 or later, without any\r\n"
+	L"warranty.  The full licence text is shown below.\r\n"
 	L"\r\n"
 	L"Modified version (2026): zoom sequence export with lossless raw map files\r\n"
-	L"(*.rawz), the raw map codec and the command line and Python tools were added.\r\n"
-	L"\r\n"
-	L"Source of the original program:  https://github.com/5E-324/Imagina\r\n"
-	L"Source of this version:          https://github.com/haveyouwantto/Imagina\r\n"
-	L"This fork (SDL3 front-end, zoom export): https://github.com/MarchBeta2087/Imagina\r\n";
+	L"(*.rawz), the raw map codec and the command line and Python tools.\r\n";
 
 INT_PTR AboutProc(HWND hWndDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/) {
 	switch (message) {
