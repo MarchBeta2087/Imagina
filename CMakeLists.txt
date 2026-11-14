@@ -609,6 +609,11 @@ endif()
 # -DCPACK_WIX_ROOT=... selects WiX 3 explicitly.
 # ---------------------------------------------------------------------------
 if(WIN32 AND IMAGINA_FRONTEND STREQUAL "win32")
+	# A caller may pass a native Windows path ("C:\Program Files (x86)\...");
+	# CPackConfig.cmake is a CMake script where backslashes are escapes.
+	if(CPACK_WIX_ROOT)
+		string(REPLACE "\\" "/" CPACK_WIX_ROOT "${CPACK_WIX_ROOT}")
+	endif()
 	set(CPACK_GENERATOR "WIX")
 	set(CPACK_PACKAGE_NAME "Imagina")
 	set(CPACK_PACKAGE_VENDOR "Imagina")
