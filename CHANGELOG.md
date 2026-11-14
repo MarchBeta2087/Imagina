@@ -12,6 +12,11 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- Saving now writes a temporary file next to the target and renames it into
+  place only after the whole location has been written, so a crash or a full
+  disk no longer truncates the previous save to zero bytes.
+  保存时先写入目标旁的临时文件，写入完成后再替换目标；崩溃或磁盘写满不再把原有
+  存档截断为 0 字节。
 - Saving a location that does not need a reference orbit (the starting view,
   or an orbit shorter than eight iterations) read an empty orbit array and
   crashed.  These locations are now written without a reference section and
