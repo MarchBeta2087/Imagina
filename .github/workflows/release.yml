@@ -79,6 +79,7 @@ jobs:
       - name: Build the .deb
         run: |
           set -eux
+          version="${GITHUB_REF_NAME#v}"
           cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
           cmake --build build --parallel
           (cd build && cpack -G DEB)
