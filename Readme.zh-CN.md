@@ -182,6 +182,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # 旧的 `in
 powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui 前端
 ```
 
+显式传入 `-Compiler`/`--compiler` 时，构建目录为 `build\<编译器>`（`build\msvc`、
+`build\gcc`、`build\clang` 等），切换编译器不会复用旧的 CMake 缓存。不指定编译器时
+仍使用 `build`；`-BuildDir`/`--build-dir` 可覆盖这两种默认值。
+
 不使用 vcpkg（或加 `-NoVcpkg`）时，依赖从脚本旁边的 `include\` 和 `lib\` 读取；
 `build.ps1` 开头的注释列出了需要哪些文件、MPIR/libpng/zlib 如何构建。MinGW-w64 也可以
 直接使用 MSYS2 的包（`mingw-w64-ucrt-x86_64-gmp`、`-libpng`、`-zlib`、`-mesa`），CI 就是
@@ -196,6 +200,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dea
 ./build.sh --frontend sdl --compiler clang
 ./build.sh --clean
 ```
+
+显式传入 `-Compiler`/`--compiler` 时，构建目录为 `build/<编译器>`
+（`build/msvc`、`build/gcc`、`build/clang` 等），切换编译器不会复用旧的 CMake
+缓存。不指定编译器时仍使用 `build`；`-BuildDir`/`--build-dir` 可覆盖这两种默认值。
 
 自定义公式（`-DENABLE_CUSTOM_FORMULA=ON`）仅支持 Windows：JIT 生成的是 Windows
 x64 机器码。该构建还需要启用 MPC 支持的 SymEngine、mpfr 和 mpc。

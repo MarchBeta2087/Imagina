@@ -198,6 +198,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -NoVcpkg         # old includ
 powershell -ExecutionPolicy Bypass -File build.ps1 -Frontend sdl    # SDL3 + Dear ImGui front-end
 ```
 
+Passing `-Compiler`/`--compiler` puts the build in `build\<compiler>` (`build\msvc`,
+`build\gcc`, `build\clang`, ...) so switching compilers does not reuse a stale
+CMake cache.  Without an explicit compiler the directory stays `build`;
+`-BuildDir`/`--build-dir` overrides both.
+
 Without vcpkg (or with `-NoVcpkg`) the dependencies are taken from `include\` and
 `lib\` next to the script; `build.ps1`'s header lists what is needed and how the
 MPIR/libpng/zlib sources are built.  MinGW-w64 can also use the MSYS2 packages
@@ -213,6 +218,11 @@ job does.
 ./build.sh --frontend sdl --compiler clang
 ./build.sh --clean
 ```
+
+Passing `-Compiler`/`--compiler` puts the build in `build/<compiler>`
+(`build/msvc`, `build/gcc`, `build/clang`, ...) so switching compilers does not
+reuse a stale CMake cache.  Without an explicit compiler the directory stays
+`build`; `-BuildDir`/`--build-dir` overrides both.
 
 Custom formulas (`-DENABLE_CUSTOM_FORMULA=ON`) are Windows-only: the JIT
 emits Windows x64 machine code.  That build also needs SymEngine with MPC

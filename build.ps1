@@ -9,8 +9,11 @@
 #
 # -Compiler auto (the default) picks MSVC when Visual Studio is installed,
 # else Clang, else GCC.  -Compiler clang-cl uses Clang's cl.exe-compatible
-# driver inside the Visual Studio environment.  Additional arguments after the
-# named ones are passed to CMake, e.g. -DENABLE_CUSTOM_FORMULA=ON.
+# driver inside the Visual Studio environment.  An explicit -Compiler uses
+# build\<compiler> (build\msvc, build\gcc, ...) so a compiler switch does not
+# reuse a stale CMake cache; -BuildDir overrides it.  Without an explicit
+# compiler the directory stays build.  Additional arguments after the named
+# ones are passed to CMake, e.g. -DENABLE_CUSTOM_FORMULA=ON.
 #
 # Dependencies: with VCPKG_ROOT set, vcpkg provides GMP, libpng, zlib, glm, SDL3
 # and Dear ImGui (see vcpkg.json).  Otherwise they are expected next to this script,
@@ -76,8 +79,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $source = Split-Path -Parent $MyInvocation.MyCommand.Path
-$build = if ($BuildDir) { $BuildDir } else { Join-Path $source "build" }
-if (![System.IO.Path]::IsPathRooted($build)) { $build = Join-Path (Get-Location).Path $build }
+$compilerExplicit = $PSBoundParameters.ContainsKey("Compiler")
 function Find-Tool([string]$Name) {
 	$command = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 	if ($command) { return $command.Source }
@@ -157,6 +159,50 @@ switch ($Compiler) {
 		$cCompiler = Find-Tool "clang-cl"
 		$cxxCompiler = $cCompiler
 		if (!$cxxCompiler) { throw "clang-cl was not found on PATH (install LLVM)." }
+	}
+}
+
+# --- build directory --------------------------------------------------------
+# An explicit -Compiler gets its own directory so switching compilers does not
+# reuse a cache that was configured for a different one.  The plain default
+# stays "build" for the documented commands and existing setups.
+$build = if ($BuildDir) { $BuildDir } elseif ($compilerExplicit) { Join-Path $source "build/$Compiler" } else { Join-Path $source "build" }
+if (![System.IO.Path]::IsPathRooted($build)) { $build = Join-Path (Get-Location).Path $build }
+
+function Get-CachedCompiler([string]$Dir) {
+	$cache = Join-Path $Dir "CMakeCache.txt"
+	if (!(Test-Path $cache)) { return $null }
+	$match = Select-String -Path $cache -Pattern '^CMAKE_CXX_COMPILER:[^=]*=(.*)$' | Select-Object -First 1
+	if (!$match) { return $null }
+	return $match.Matches[0].Groups[1].Value.Trim()
+}
+
+function Test-CachedCompiler([string]$Cached) {
+	$name = [IO.Path]::GetFileName($Cached).ToLowerInvariant()
+	$result = switch ($Compiler) {
+		"msvc" { $name -eq "cl.exe" }
+		"clang-cl" { $name -eq "clang-cl.exe" -or $name -eq "clang-cl" }
+		"clang" { $name -like "clang++*" -or $name -eq "clang" -or $name -eq "clang.exe" }
+		"gcc" { $name -like "g++*" -or $name -like "gcc*" -or $name -like "c++*" }
+		default { $true }
+	}
+	return $result
+}
+
+$cached = Get-CachedCompiler $build
+if ($cached -and !(Test-CachedCompiler $cached)) {
+	if (!$BuildDir -and !$compilerExplicit) {
+		# The old default directory belongs to another compiler.  Keep it and
+		# fall back to the per-compiler directory instead of failing.
+		$fallback = Join-Path $source "build/$Compiler"
+		$cachedFallback = Get-CachedCompiler $fallback
+		if ($cachedFallback -and !(Test-CachedCompiler $cachedFallback)) {
+			throw "The CMake cache in '$fallback' was configured with '$cachedFallback'; use -BuildDir <dir> or delete that directory before building with $Compiler."
+		}
+		Write-Host "The CMake cache in '$build' was configured with '$cached'; using '$fallback'."
+		$build = $fallback
+	} else {
+		throw "The CMake cache in '$build' was configured with '$cached'; use -BuildDir <dir> or delete that directory before building with $Compiler."
 	}
 }
 
