@@ -10,6 +10,16 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+### Added / 新增
+
+- Debian/Ubuntu package: `cmake --preset linux-deb` + `cpack -G DEB` builds an
+  `imagina` package that installs the executable to `/usr/bin`, the font and
+  docs under `/usr/share`, and a desktop entry and icon; the release workflow
+  attaches the `.deb` to the draft release next to the tarball.
+  Debian/Ubuntu 安装包：`cmake --preset linux-deb` + `cpack -G DEB` 生成 `imagina`
+  包，程序安装到 `/usr/bin`，字体和文档安装到 `/usr/share`，并附带 desktop
+  文件和图标；release 工作流会把 `.deb` 和压缩包一起附到草稿 Release 上。
+
 ### Fixed / 修复
 
 - The Windows GCC build no longer crashes when zooming in far enough to

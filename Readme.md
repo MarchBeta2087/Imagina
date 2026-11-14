@@ -224,6 +224,19 @@ Passing `-Compiler`/`--compiler` puts the build in `build/<compiler>`
 reuse a stale CMake cache.  Without an explicit compiler the directory stays
 `build`; `-BuildDir`/`--build-dir` overrides both.
 
+A Debian/Ubuntu package can be built from the same sources:
+
+```
+cmake --preset linux-deb
+cmake --build --preset linux-deb
+(cd build/linux-deb && cpack -G DEB)
+```
+
+It installs the executable to `/usr/bin/Imagina`, the font, licence and docs to
+`/usr/share/imagina` and `/usr/share/doc/imagina`, plus a desktop entry and an
+icon.  The same system layout (`-DIMAGINA_INSTALL_LAYOUT=system`) is what a
+Flatpak uses with `-DCMAKE_INSTALL_PREFIX=/app`.
+
 On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it is
 installed (recommended under WSL), and SDL's XDG desktop portal otherwise.  A
 portal service that was started without `DISPLAY` cannot show a dialog; install
