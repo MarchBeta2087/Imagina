@@ -234,8 +234,23 @@ cmake --build --preset linux-deb
 
 It installs the executable to `/usr/bin/Imagina`, the font, licence and docs to
 `/usr/share/imagina` and `/usr/share/doc/imagina`, plus a desktop entry and an
-icon.  The same system layout (`-DIMAGINA_INSTALL_LAYOUT=system`) is what a
-Flatpak uses with `-DCMAKE_INSTALL_PREFIX=/app`.
+icon.
+
+A Flatpak is built from the same sources with the manifest in
+`packaging/flatpak/`:
+
+```
+flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.flatpak.Builder
+flatpak run --command=flatpak-builder org.flatpak.Builder \
+    --user --disable-rofiles-fuse --install --force-clean build-flatpak \
+    packaging/flatpak/org.imagina.Imagina.yml
+flatpak run org.imagina.Imagina
+```
+
+The manifest builds SDL3, Dear ImGui, GLM, GMP and the CJK font from their
+upstream sources and uses the same system install layout with `/app` as the
+prefix.
 
 On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it is
 installed (recommended under WSL), and SDL's XDG desktop portal otherwise.  A

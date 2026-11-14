@@ -15,7 +15,7 @@ option(BUILD_CODEC_TEST "Build the raw map codec round trip test" OFF)
 
 # "portable" is the flat layout of the release tarball (everything next to the
 # executable); "system" is the FHS layout a distribution package needs
-# (bin/, share/doc, share/imagina, share/applications, share/pixmaps).
+# (bin/, share/doc, share/imagina, share/applications, share/icons).
 set(IMAGINA_INSTALL_LAYOUT "portable" CACHE STRING "Install layout: portable or system")
 set_property(CACHE IMAGINA_INSTALL_LAYOUT PROPERTY STRINGS portable system)
 
@@ -532,8 +532,12 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/icon)
 		install(FILES fonts/README.md fonts/LICENSE
 			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/fonts)
-		install(FILES icon/imagina_icon.png
-			DESTINATION ${CMAKE_INSTALL_DATADIR}/pixmaps RENAME imagina.png)
+		install(FILES icon/imagina_512.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps RENAME imagina.png)
+		install(FILES icon/imagina_256.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps RENAME imagina.png)
+		install(FILES icon/imagina_128.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps RENAME imagina.png)
 		install(FILES packaging/linux/imagina.desktop
 			DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")

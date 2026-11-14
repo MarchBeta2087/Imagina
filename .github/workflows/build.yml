@@ -31,7 +31,7 @@ jobs:
             libgl1-mesa-dev libgl1-mesa-dri xvfb \
             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
             libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev \
-            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev
+            libxkbcommon-x11-dev libwayland-dev libdecor-0-dev \n            appstream python3-yaml
 
       - name: Configure
         run: |
@@ -138,6 +138,11 @@ jobs:
 
       - name: Check the translations are complete
         run: python3 tools/check-translations.py
+
+      - name: Check the AppStream metadata and the Flatpak manifest
+        run: |
+          appstreamcli validate --no-net packaging/flatpak/org.imagina.Imagina.metainfo.xml
+          python3 -c "import yaml; yaml.safe_load(open('packaging/flatpak/org.imagina.Imagina.yml'))"
 
       - name: Render the UI in Chinese
         run: |
