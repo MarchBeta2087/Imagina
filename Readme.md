@@ -290,12 +290,20 @@ back with a pull request.  See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The version lives in one place, the `project(... VERSION ...)` command in
 `CMakeLists.txt`; `--version`, the About dialog and the Windows version resource
-all come from it (`vcpkg.json` repeats it for the manifest).  It is `1.0.0`.  Releases use `vMAJOR.MINOR.PATCH` tags, and every release is
-described in [CHANGELOG.md](CHANGELOG.md).
+all come from it (`vcpkg.json` repeats it for the manifest).  Releases use
+`vMAJOR.MINOR.PATCH` tags, and every release is described in
+[CHANGELOG.md](CHANGELOG.md).
+
+Before tagging, bump the version in `CMakeLists.txt` and `vcpkg.json` and move
+the `[Unreleased]` CHANGELOG entries into a new `## [x.y.z] - YYYY-MM-DD`
+section.  Pushing a `vX.Y.Z` tag runs the `release` workflow: it builds the
+Linux and Windows archives, writes `SHA256SUMS` and attaches both, together
+with generated release notes, to a **draft** GitHub release.  The workflow
+stops when the tag does not match the two version fields.
 
 ```
 $ ./build/Imagina --version
-Imagina 1.0.0 (SDL front-end)
+Imagina x.y.z (SDL front-end)
 ```
 
 ## License
