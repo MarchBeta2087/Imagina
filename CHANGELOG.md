@@ -31,6 +31,11 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 - The About dialog now lists the maintained fork first and is tall enough to
   show all source links instead of clipping them.
   关于对话框把维护者的仓库链接放在最前，并加大了高度，所有源码链接都能显示。
+- Saving a high magnification location whose reference had only double
+  precision linear approximation stages threw an exception instead of
+  writing the file.  The double orbit is stored in that case.
+  保存高倍位置时，如果参考的线性近似阶段全部是双精度，旧代码会抛出异常而无法
+  写文件；现在改为保存双精度轨道。
 - Saving now writes a temporary file next to the target and renames it into
   place only after the whole location has been written, so a crash or a full
   disk no longer truncates the previous save to zero bytes.
