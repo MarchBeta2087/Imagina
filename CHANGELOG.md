@@ -12,6 +12,13 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- An explicit compiler now gets its own build directory: `build.ps1 -Compiler`
+  and `build.sh --compiler` use `build/<compiler>` (`build/msvc`, `build/gcc`,
+  `build/clang`), and both scripts refuse to reuse a CMake cache configured for
+  a different compiler.
+  显式指定编译器时使用独立构建目录：`build.ps1 -Compiler` 和
+  `build.sh --compiler` 使用 `build/<编译器>`（`build/msvc`、`build/gcc`、
+  `build/clang`），并拒绝复用为其他编译器配置的 CMake 缓存。
 - The optional custom formula build did not compile with GCC or Clang: the
   encoder headers relied on transitive includes, the `and`/`or`/`not` macros
   shadowed C++ keywords, and a function pointer was converted to `void *`

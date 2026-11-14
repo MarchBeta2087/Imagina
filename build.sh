@@ -27,7 +27,8 @@ Options:
   --compiler <auto|gcc|clang>   Compiler to use (default: auto)
   --config <Debug|Release|RelWithDebInfo|MinSizeRel>
                                 Build type (default: Release)
-  --build-dir <dir>             Build directory (default: build)
+  --build-dir <dir>             Build directory (default: build, or build/<compiler>
+                                when --compiler is given)
   --generator <name>            CMake generator (default: Ninja if available)
   --frontend <win32|sdl>        Window toolkit (default: win32 on Windows, sdl elsewhere)
   --gui                         Require the window application (the default)
@@ -42,9 +43,11 @@ EOF
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 compiler=auto
+compiler_explicit=0
 frontend=
 config=Release
-build_dir="$source_dir/build"
+build_dir=
+build_dir_explicit=0
 generator=
 want_gui=auto
 want_test=OFF
@@ -54,12 +57,12 @@ extra_args=()
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-		--compiler)      compiler=${2:?--compiler needs a value}; shift 2 ;;
-		--compiler=*)    compiler=${1#*=}; shift ;;
+		--compiler)      compiler=${2:?--compiler needs a value}; compiler_explicit=1; shift 2 ;;
+		--compiler=*)    compiler=${1#*=}; compiler_explicit=1; shift ;;
 		--config)        config=${2:?--config needs a value}; shift 2 ;;
 		--config=*)      config=${1#*=}; shift ;;
-		--build-dir)     build_dir=${2:?--build-dir needs a value}; shift 2 ;;
-		--build-dir=*)   build_dir=${1#*=}; shift ;;
+		--build-dir)     build_dir=${2:?--build-dir needs a value}; build_dir_explicit=1; shift 2 ;;
+		--build-dir=*)   build_dir=${1#*=}; build_dir_explicit=1; shift ;;
 		--generator)     generator=${2:?--generator needs a value}; shift 2 ;;
 		--generator=*)   generator=${1#*=}; shift ;;
 		--frontend)      frontend=${2:?--frontend needs a value}; shift 2 ;;
@@ -162,6 +165,17 @@ if [ "$compiler" = auto ]; then
 	echo "Detected compiler: $compiler"
 fi
 
+# An explicit --compiler gets its own directory so switching compilers does
+# not reuse a cache that was configured for a different one.  The plain
+# default stays "build" for the documented commands and existing setups.
+if [ "$build_dir_explicit" = 0 ]; then
+	if [ "$compiler_explicit" = 1 ]; then
+		build_dir="$source_dir/build/$compiler"
+	else
+		build_dir="$source_dir/build"
+	fi
+fi
+
 cc=${CC:-}
 cxx=${CXX:-}
 if [ "$compiler" = clang ]; then
@@ -192,12 +206,51 @@ if [ -z "$jobs" ]; then
 	jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 fi
 
+build_dir=$(to_native "$build_dir")
+source_dir=$(to_native "$source_dir")
+
+cache_matches() {
+	local cached="$1"
+	[ -z "$cached" ] && return 0
+	local name
+	name=$(basename -- "$cached" | tr '[:upper:]' '[:lower:]')
+	case "$compiler" in
+		clang) case "$name" in clang++*|clang-*|clang) return 0 ;; esac ;;
+		gcc)   case "$name" in g++*|gcc*|c++*) return 0 ;; esac ;;
+	esac
+	return 1
+}
+
+cached_compiler=""
+if [ "$clean" = 0 ] && [ -f "$build_dir/CMakeCache.txt" ]; then
+	cached_compiler=$(sed -n 's/^CMAKE_CXX_COMPILER:[^=]*=//p' "$build_dir/CMakeCache.txt" | head -n 1)
+fi
+if [ -n "$cached_compiler" ] && ! cache_matches "$cached_compiler"; then
+	if [ "$build_dir_explicit" = 0 ] && [ "$compiler_explicit" = 0 ]; then
+		# The old default directory belongs to another compiler.  Keep it and
+		# fall back to the per-compiler directory instead of failing.
+		fallback="$source_dir/build/$compiler"
+		cached_fallback=""
+		if [ -f "$fallback/CMakeCache.txt" ]; then
+			cached_fallback=$(sed -n 's/^CMAKE_CXX_COMPILER:[^=]*=//p' "$fallback/CMakeCache.txt" | head -n 1)
+		fi
+		if [ -n "$cached_fallback" ] && ! cache_matches "$cached_fallback"; then
+			echo "The CMake cache in '$fallback' was configured with '$cached_fallback'." >&2
+			echo "Use --build-dir <dir> or remove that directory before building with $compiler." >&2
+			exit 1
+		fi
+		echo "The CMake cache in '$build_dir' was configured with '$cached_compiler'; using '$fallback'."
+		build_dir="$fallback"
+	else
+		echo "The CMake cache in '$build_dir' was configured with '$cached_compiler'." >&2
+		echo "Use --build-dir <dir> or remove that directory before building with $compiler." >&2
+		exit 1
+	fi
+fi
+
 if [ "$clean" = 1 ]; then
 	rm -rf -- "$build_dir"
 fi
-
-build_dir=$(to_native "$build_dir")
-source_dir=$(to_native "$source_dir")
 
 # --- configure and build ----------------------------------------------------
 cmake_args=(
