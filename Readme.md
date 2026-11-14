@@ -240,8 +240,11 @@ Notes:
   computation are unaffected.  Link time optimisation is off by default
   (`-DIMAGINA_ENABLE_LTO=ON` to try it).
 * `IMAGINA_THREADS=<n>` limits the worker pool.
-* `IMAGINA_CRASH_REPORT=1` installs an exception handler that prints the faulting
-  module offset and a stack walk (Windows).
+* A crash report is written to `%LOCALAPPDATA%\Imagina\Imagina-crash.txt` on
+  Windows and to `$XDG_STATE_HOME/imagina/Imagina-crash.txt` (or
+  `~/.local/state/imagina/`) on Linux/BSD.  When that directory cannot be
+  written the temporary directory is used instead, and the error dialog shows
+  the full path.  The stack is also printed to stderr.
 * The SDL front-end accepts `--frames <n>` (quit after n frames),
   `--screenshot <file.bmp>`, `--open <file>`, `--save <file>` (the extension picks
   the format), `--windows` (open every dialog) and `--stress` (zoom every frame),

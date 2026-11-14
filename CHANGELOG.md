@@ -10,6 +10,26 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ## [Unreleased]
 
+### Fixed / 修复
+
+- The transformation dialog wrote one byte past a 32 byte stack buffer
+  (`buffer[32] = 0`) and corrupted the return address, so pressing OK crashed.
+  Flip imaginary axis only made the bad frame more likely to be hit.
+  变换对话框在 32 字节栈缓冲区的末尾越界写入（`buffer[32] = 0`），破坏返回地址，
+  按下「确定」即崩溃；勾选「Flip imaginary axis」只是让问题更容易触发。
+- Crash reports now go to a writable per-user directory instead of next to the
+  executable: `%LOCALAPPDATA%\Imagina\Imagina-crash.txt` on Windows and
+  `$XDG_STATE_HOME/imagina/` (or `~/.local/state/imagina/`) on Linux/BSD.  If
+  that directory cannot be created or written the report falls back to the
+  temporary directory, and the error dialog shows the path actually used.
+  崩溃报告改为写入用户可写目录，不再写在可执行文件旁：Windows 为
+  `%LOCALAPPDATA%\Imagina\Imagina-crash.txt`，Linux/BSD 为
+  `$XDG_STATE_HOME/imagina/`（或 `~/.local/state/imagina/`）。目录创建或写入失败
+  时退回临时目录，错误框会显示实际使用的路径。
+- The iteration limit and image size dialogs passed no size argument for `%c` to
+  `sscanf_s`, which MSVC reports as C4473.
+  迭代上限与图像尺寸对话框的 `sscanf_s` 没有给 `%c` 传长度参数，MSVC 会报 C4473。
+
 ## [1.0.3] - 2026-11-13
 
 ### Fixed / 修复
