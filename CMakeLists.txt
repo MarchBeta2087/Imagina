@@ -327,6 +327,8 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "win32")
 	target_link_libraries(Imagina ${ZLIB_LIBRARY})
 	target_link_libraries(Imagina "dwmapi")
 	target_link_libraries(Imagina "dbghelp")
+	target_link_libraries(Imagina "shell32")
+	target_link_libraries(Imagina "ole32")
 	target_link_libraries(Imagina ${MPIR_LIBRARY})
 
 	if(MPIR_USE_DLL)
@@ -447,11 +449,16 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	endif()
 
 	if(WIN32)
-		target_link_libraries(Imagina PRIVATE opengl32 dbghelp)
+		target_link_libraries(Imagina PRIVATE opengl32 dbghelp shell32 ole32)
 	else()
 		find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 		target_link_libraries(Imagina PRIVATE OpenGL::GL)
 		target_compile_definitions(Imagina PRIVATE IMAGINA_SDL)
+		# backtrace_symbols_fd() only names functions from the executable when its
+		# dynamic symbol table is exported.
+		if(UNIX AND NOT APPLE)
+			target_link_options(Imagina PRIVATE -rdynamic)
+		endif()
 	endif()
 
 	if(ENABLE_CUSTOM_FORMULA)

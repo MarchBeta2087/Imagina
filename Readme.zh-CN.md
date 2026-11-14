@@ -220,7 +220,10 @@ SDL3 与 Dear ImGui 先尝试 `find_package`，找不到再从 GitHub 获取；`
   部分的 `_mm256_*` 内建函数不受影响。链接时优化默认关闭（可加
   `-DIMAGINA_ENABLE_LTO=ON` 试用）。
 * `IMAGINA_THREADS=<n>` 限制工作线程数。
-* `IMAGINA_CRASH_REPORT=1` 安装异常处理器，崩溃时打印故障模块偏移与栈回溯（Windows）。
+* 崩溃报告写入用户目录：Windows 为 `%LOCALAPPDATA%\Imagina\Imagina-crash.txt`，
+  Linux/BSD 为 `$XDG_STATE_HOME/imagina/Imagina-crash.txt`（或
+  `~/.local/state/imagina/`）。目录不可写时退回临时目录，错误框会给出完整路径，
+  同时把栈打印到 stderr。
 * SDL 前端支持 `--frames <n>`（跑 n 帧后退出）、`--screenshot <file.bmp>`、
   `--open <file>`、`--save <file>`（按扩展名决定格式）、`--windows`（打开全部对话框）
   和 `--stress`（每帧缩放），因此渲染、文件格式和界面都能在没有人工点击的情况下测试：
