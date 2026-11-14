@@ -42,6 +42,15 @@
         "IMAGINA_FRONTEND": "sdl",
         "BUILD_CODEC_TEST": "ON"
       }
+    },
+    {
+      "name": "linux-deb",
+      "displayName": "Linux x64, GCC, SDL front-end, system install layout (deb)",
+      "inherits": "linux",
+      "binaryDir": "${sourceDir}/build/linux-deb",
+      "cacheVariables": {
+        "IMAGINA_INSTALL_LAYOUT": "system"
+      }
     }
   ],
   "buildPresets": [
@@ -56,6 +65,10 @@
     {
       "name": "linux",
       "configurePreset": "linux"
+    },
+    {
+      "name": "linux-deb",
+      "configurePreset": "linux-deb"
     }
   ]
 }

@@ -13,6 +13,12 @@ endif()
 option(MPIR_USE_DLL "Use dll version of MPIR" ON)
 option(BUILD_CODEC_TEST "Build the raw map codec round trip test" OFF)
 
+# "portable" is the flat layout of the release tarball (everything next to the
+# executable); "system" is the FHS layout a distribution package needs
+# (bin/, share/doc, share/imagina, share/applications, share/pixmaps).
+set(IMAGINA_INSTALL_LAYOUT "portable" CACHE STRING "Install layout: portable or system")
+set_property(CACHE IMAGINA_INSTALL_LAYOUT PROPERTY STRINGS portable system)
+
 # Front-end: the Win32 one (window, menus and dialogs from MainWindow.cpp) or
 # the portable SDL3 + Dear ImGui one.  The Win32 front-end only builds on
 # Windows; the SDL one builds everywhere SDL3 and OpenGL are available.
@@ -500,12 +506,31 @@ if(BUILD_GUI AND IMAGINA_FRONTEND STREQUAL "sdl")
 	# "cmake --install" produces the layout of the release archive: the executable,
 	# the licence and the Readme it shows, and the CJK font when it has been
 	# fetched into fonts/ (see tools/fetch-fonts.sh).
-	install(TARGETS Imagina RUNTIME DESTINATION .)
-	install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
-	install(FILES icon/LICENSE icon/README.md DESTINATION icon)
-	install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
-		install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
+	if(IMAGINA_INSTALL_LAYOUT STREQUAL "system")
+		include(GNUInstallDirs)
+		install(TARGETS Imagina RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+		install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/imagina)
+		install(FILES icon/LICENSE icon/README.md
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/icon)
+		install(FILES fonts/README.md fonts/LICENSE
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/fonts)
+		install(FILES icon/imagina_icon.png
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/pixmaps RENAME imagina.png)
+		install(FILES packaging/linux/imagina.desktop
+			DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
+			install(FILES fonts/SarasaMonoSC-Regular.ttf
+				DESTINATION ${CMAKE_INSTALL_DATADIR}/imagina/fonts)
+		endif()
+	else()
+		install(TARGETS Imagina RUNTIME DESTINATION .)
+		install(FILES LICENSE.txt CHANGELOG.md Readme.md Readme.zh-CN.md DESTINATION .)
+		install(FILES icon/LICENSE icon/README.md DESTINATION icon)
+		install(FILES fonts/README.md fonts/LICENSE DESTINATION fonts)
+		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/SarasaMonoSC-Regular.ttf")
+			install(FILES fonts/SarasaMonoSC-Regular.ttf DESTINATION fonts)
+		endif()
 	endif()
 endif()
 
@@ -520,4 +545,37 @@ endif()
 
 if(NOT BUILD_GUI AND NOT BUILD_CODEC_TEST)
 	message(WARNING "Nothing will be built: enable BUILD_GUI and/or BUILD_CODEC_TEST.")
+endif()
+
+# ---------------------------------------------------------------------------
+# Debian/Ubuntu package
+#
+# The system install layout above is what the package uses:
+#   cmake -B build-deb -DIMAGINA_FRONTEND=sdl -DIMAGINA_INSTALL_LAYOUT=system
+#   cmake --build build-deb
+#   cd build-deb && cpack -G DEB
+# The release workflow builds it next to the portable tarball.
+# ---------------------------------------------------------------------------
+if(UNIX AND NOT APPLE AND IMAGINA_FRONTEND STREQUAL "sdl")
+	set(CPACK_GENERATOR "DEB")
+	set(CPACK_PACKAGE_NAME "imagina")
+	set(CPACK_PACKAGE_VENDOR "Imagina")
+	set(CPACK_PACKAGE_CONTACT "MarchBeta2087")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast fractal renderer and explorer")
+	set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/MarchBeta2087/Imagina")
+	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+	set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+	set(CPACK_STRIP_FILES ON)
+	set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+	set(CPACK_DEBIAN_PACKAGE_NAME "imagina")
+	set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+	set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+	# SDL3 loads the GL, X11 and Wayland libraries at runtime, so dpkg-shlibdeps
+	# does not see them in the binary's NEEDED entries; the directly linked ones
+	# are listed explicitly to keep the package installable without them.
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS
+		"libc6, libgcc-s1, libstdc++6, libgmp10, libpng16-16, zlib1g, libglvnd0, libopengl0, libx11-6")
+	set(CPACK_DEBIAN_PACKAGE_RECOMMENDS
+		"libgl1, libgl1-mesa-dri, libwayland-client0, libdecor-0-0, zenity")
+	include(CPack)
 endif()

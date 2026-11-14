@@ -306,6 +306,11 @@ bool LoadFont(ImGuiIO &IO, float Size) {
 		std::filesystem::path Directory(Base);
 		Candidates.push_back(Directory / Name);
 		Candidates.push_back(Directory / "fonts" / Name);
+		// System install (deb): /usr/bin/Imagina with the data under
+		// /usr/share/imagina; the same relative path works for /app in a
+		// Flatpak and for a staging directory used by a packager.
+		Candidates.push_back(Directory / ".." / "share" / "imagina" / "fonts" / Name);
+		Candidates.push_back(Directory / ".." / "share" / "imagina" / Name);
 		// SDL owns the string SDL_GetBasePath() returns (it is cached and freed
 		// by SDL_Quit), so it must not be released here.
 	}
@@ -643,12 +648,17 @@ void DrawMenuBar() {
 	if (ImGui::BeginMenu(Tr("Help"))) {
 		if (ImGui::MenuItem(Tr("About / License..."))) {
 			if (!UI.LicenceLoaded) {
-				// An installed copy carries LICENSE.txt next to the executable; a
-				// build tree falls back to the file the configure step found.
+				// An installed copy carries LICENSE.txt next to the executable or,
+				// for a system install, in /usr/share/doc/imagina; a build tree
+				// falls back to the file the configure step found.
 				std::stringstream Contents;
 				bool Loaded = false;
 				if (const char *Base = SDL_GetBasePath()) {
-					std::ifstream File(std::filesystem::path(Base) / "LICENSE.txt");
+					std::filesystem::path LicencePath = std::filesystem::path(Base) / "LICENSE.txt";
+					if (!std::filesystem::exists(LicencePath)) {
+						LicencePath = std::filesystem::path(Base) / ".." / "share" / "doc" / "imagina" / "LICENSE.txt";
+					}
+					std::ifstream File(LicencePath);
 					if (File) {
 						Contents << File.rdbuf();
 						Loaded = true;

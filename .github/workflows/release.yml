@@ -74,10 +74,22 @@ jobs:
           tar -C dist -czf "dist/Imagina-$version-linux-x86_64.tar.gz" "Imagina-$version-linux-x86_64"
           ls -l "$stage" dist
 
+      # Reuse the build tree: only the install layout changes, so the
+      # executable does not have to be compiled again.
+      - name: Build the .deb
+        run: |
+          set -eux
+          cmake -S . -B build -DIMAGINA_INSTALL_LAYOUT=system
+          cmake --build build --parallel
+          (cd build && cpack -G DEB)
+          cp build/*.deb dist/
+          dpkg-deb --info dist/*.deb
+          dpkg-deb --contents dist/*.deb | head -40
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
-          path: dist/*.tar.gz
+          path: dist/*
           if-no-files-found: error
 
   windows:
