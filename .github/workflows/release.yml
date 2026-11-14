@@ -85,8 +85,9 @@ jobs:
           glibc=$(objdump -T build/Imagina | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -n 1 | sed 's/^GLIBC_//')
           mv build/*.deb "dist/imagina-${version}-amd64-glibc${glibc}.deb"
           dpkg-deb --info dist/*.deb
-          dpkg-deb --contents dist/*.deb | head -40
-          apt-get -s install dist/*.deb
+          dpkg-deb --contents dist/*.deb > /tmp/deb-contents.txt
+          head -40 /tmp/deb-contents.txt
+          apt-get -s install ./dist/*.deb
 
       - uses: actions/upload-artifact@v4
         with:
@@ -134,7 +135,7 @@ jobs:
           mkdir -p dist
           mv build/*.deb "dist/imagina-${version}-amd64-glibc${glibc}.deb"
           dpkg-deb --info dist/*.deb
-          apt-get -s install dist/*.deb
+          apt-get -s install ./dist/*.deb
 
       - name: Build the AppImage
         run: |

@@ -183,7 +183,7 @@ jobs:
           dpkg-deb --contents build/*.deb | grep -q ./usr/share/imagina/fonts/SarasaMonoSC-Regular.ttf
           # The dependencies are derived with dpkg-shlibdeps; make sure they
           # resolve on this distribution.
-          apt-get -s install build/*.deb
+          apt-get -s install ./build/*.deb
 
   linux-appimage:
     name: Linux AppImage (22.04)
@@ -210,7 +210,7 @@ jobs:
         run: |
           (cd build && cpack -G DEB)
           dpkg-deb --info build/*.deb
-          apt-get -s install build/*.deb
+          apt-get -s install ./build/*.deb
 
       - name: Build the AppImage
         run: |
