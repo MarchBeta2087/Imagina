@@ -61,7 +61,11 @@ static size_t ReadRawInteger(std::istream &File, mpz_ptr Value) {
 }
 
 static size_t WriteRawFloat(std::ostream &File, mpf_srcptr Value) {
-	long int Exponent = Value->_mp_exp;
+	// The exponent was written as long, which is four bytes on Windows and eight
+	// on Linux.  Files saved on one platform then failed to load on the other.
+	// Four bytes matches the Windows layout and is far more than any usable zoom
+	// needs, so it is used everywhere.
+	int32_t Exponent = int32_t(Value->_mp_exp);
 	File.write((char *)&Exponent, sizeof(Exponent));
 
 	int Size = Value->_mp_size;
@@ -74,14 +78,14 @@ static size_t WriteRawFloat(std::ostream &File, mpf_srcptr Value) {
 }
 
 static void ReadRawFloat(std::istream &File, mpf_ptr Value) {
-	long int Exponent = 0;
+	int32_t Exponent = 0;
 	File.read((char *)&Exponent, sizeof(Exponent));
 
 	mpz_t Mantissa;
 	mpz_init(Mantissa);
 	ReadRawInteger(File, Mantissa);
 	mpf_set_z(Value, Mantissa);
-	Value->_mp_exp = Exponent;
+	Value->_mp_exp = mp_exp_t(Exponent);
 	mpz_clear(Mantissa);
 }
 
@@ -225,12 +229,15 @@ void LoadImtFile(std::istream &File) {
 	// TODO: Restore previous values in case of exception
 	if (Parameters.contains("Location")) {
 		try {
-			HRReal HalfH = HRReal(mpf_class(Parameters.at("Location.Size"), 52, -16));
+			// The text format stores the coordinates and the size as decimal numbers.
+			// Parsing them as base 16 turned "2e-40" into an invalid argument and
+			// made every non-integer coordinate come out wrong.
+			HRReal HalfH = HRReal(mpf_class(Parameters.at("Location.Size"), 52, 10));
 
 			if (HalfH > 16.0_hr) HalfH = 16.0_hr;
 			uint64_t Precision = -std::min<int64_t>(0, HalfH.Exponent) + 64;
 
-			Coordinate NewCoordinate{ mpf_class(Parameters.at("Location.Re"), Precision, 16), mpf_class(Parameters.at("Location.Im"), Precision, -16) };
+			Coordinate NewCoordinate{ mpf_class(Parameters.at("Location.Re"), Precision, 10), mpf_class(Parameters.at("Location.Im"), Precision, 10) };
 
 			CorrectMpf(NewCoordinate.X.get_mpf_t()); // Workaround for a bug of MPIR
 			CorrectMpf(NewCoordinate.Y.get_mpf_t());

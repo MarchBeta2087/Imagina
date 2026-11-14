@@ -224,6 +224,11 @@ Passing `-Compiler`/`--compiler` puts the build in `build/<compiler>`
 reuse a stale CMake cache.  Without an explicit compiler the directory stays
 `build`; `-BuildDir`/`--build-dir` overrides both.
 
+On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it is
+installed (recommended under WSL), and SDL's XDG desktop portal otherwise.  A
+portal service that was started without `DISPLAY` cannot show a dialog; install
+`zenity` or import `DISPLAY` into the user session in that case.
+
 Custom formulas (`-DENABLE_CUSTOM_FORMULA=ON`) are Windows-only: the JIT
 emits Windows x64 machine code.  That build also needs SymEngine with MPC
 support, mpfr and mpc.

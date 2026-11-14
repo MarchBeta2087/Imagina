@@ -12,6 +12,31 @@ Imagina 的所有重要变更都记录在这里。格式沿用
 
 ### Fixed / 修复
 
+- `.im` files are portable between Windows and Linux again: the embedded
+  floating point exponent is stored in a fixed 32-bit field instead of `long`,
+  which is 4 bytes on Windows and 8 bytes on Linux.  Loading a save from the
+  other platform used to fail with "Error while loading the file".
+  `.im` 文件重新可以在 Windows 与 Linux 之间互通：内嵌浮点指数改为固定 32 位，
+  不再使用 `long`（Windows 为 4 字节、Linux 为 8 字节）。此前加载另一平台保存的
+  文件会报 “Error while loading the file”。
+- Text `.imt` files are parsed as decimal again: the coordinates and `Size` were
+  read as base 16, which made fractional coordinates wrong and rejected values
+  such as `2e-40`.
+  文本 `.imt` 文件重新按十进制解析：此前坐标和 `Size` 被当作十六进制，导致小数
+  坐标错误，并拒绝 `2e-40` 这类值。
+- `--save` now waits for the reference task as well as the pixels, so a high
+  magnification view cannot be written without its reference section.
+  `--save` 现在会等待参考轨道任务和像素都完成，高倍视图不会再写成缺少参考段
+  的文件。
+- On Linux the SDL front-end uses `zenity` for the Open and Save dialogs when it
+  is available, because an XDG desktop portal started without `DISPLAY` never
+  answers (common under WSLg).
+  Linux 上 SDL 前端在可用时使用 `zenity` 显示打开/保存对话框；启动时没有
+  `DISPLAY` 的 XDG portal 不会响应（WSLg 下常见）。
+- Added `tests/save_roundtrip.py`, which saves, reloads and saves again at a
+  high magnification; CI runs it under Xvfb.
+  新增 `tests/save_roundtrip.py`，在高倍位置保存、重新加载并再次保存；CI 会在
+  Xvfb 下运行。
 - An explicit compiler now gets its own build directory: `build.ps1 -Compiler`
   and `build.sh --compiler` use `build/<compiler>` (`build/msvc`, `build/gcc`,
   `build/clang`), and both scripts refuse to reuse a CMake cache configured for

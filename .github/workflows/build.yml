@@ -80,6 +80,10 @@ jobs:
           assert black > 0.01, 'the set interior is missing'
           EOF
 
+      - name: Save and load round trip
+        run: |
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a python3 tests/save_roundtrip.py build/Imagina
+
       - name: Export a zoom sequence and read a key frame back
         run: |
           set -x
